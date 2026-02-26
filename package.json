@@ -1,0 +1,31 @@
+{
+  "name": "e2e-orchestrator",
+  "private": true,
+  "version": "0.0.0",
+  "packageManager": "pnpm@10.30.3+sha512.c961d1e0a2d8e354ecaa5166b822516668b7f44cb5bd95122d590dd81922f606f5473b6d23ec4a5be05e7fcd18e8488d47d978bbe981872f1145d06e9a740017",
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "dev:server": "pnpm --filter server start:dev",
+    "lint:web": "pnpm exec eslint --config apps/web/eslint.config.js \"apps/web/**/*.{ts,tsx}\" --max-warnings 0 --no-warn-ignored",
+    "lint:web:fix": "pnpm exec eslint --config apps/web/eslint.config.js \"apps/web/**/*.{ts,tsx}\" --fix --max-warnings 0 --no-warn-ignored",
+    "lint:server": "pnpm exec eslint --config apps/server/eslint.config.mjs \"apps/server/src/**/*.ts\" --max-warnings 0 --no-warn-ignored",
+    "lint:server:fix": "pnpm exec eslint --config apps/server/eslint.config.mjs \"apps/server/src/**/*.ts\" --fix --max-warnings 0 --no-warn-ignored",
+    "lint:tooling": "pnpm exec eslint --config eslint.config.mjs \"eslint.config.mjs\" \"apps/*/eslint.config.{js,mjs,cjs}\" --max-warnings 0 --no-warn-ignored",
+    "lint:tooling:fix": "pnpm exec eslint --config eslint.config.mjs \"eslint.config.mjs\" \"apps/*/eslint.config.{js,mjs,cjs}\" --fix --max-warnings 0 --no-warn-ignored",
+    "lint:eslint": "pnpm lint:web && pnpm lint:server && pnpm lint:tooling",
+    "format:check": "pnpm exec prettier --check \"apps/**/*.{ts,tsx,js,mjs,cjs,json,css}\" \"*.{json,mjs,js,cjs,yml,yaml}\"",
+    "format:write": "pnpm exec prettier --write \"apps/**/*.{ts,tsx,js,mjs,cjs,json,css}\" \"*.{json,mjs,js,cjs,yml,yaml}\"",
+    "lint": "pnpm lint:eslint && pnpm format:check",
+    "lint:fix": "pnpm lint:web:fix && pnpm lint:server:fix && pnpm lint:tooling:fix && pnpm format:write"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.3",
+    "eslint": "^9.39.3",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.26",
+    "globals": "^16.5.0",
+    "prettier": "^3.4.2",
+    "typescript-eslint": "^8.56.1"
+  }
+}

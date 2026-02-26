@@ -240,7 +240,7 @@
 ## 13. 建议实施顺序（可直接执行）
 
 1. 配置跨仓联调：接入已就绪的 `sut-demo` 与 `demo-test-lib`（固化 `sut_base_url`、`command`、`cwd`）。
-2. 以现有 `schema.prisma` 为准执行 Prisma migration（不再重设表结构）。
+2. 在触发条件满足的 feature PR 内落地 Prisma 基建与 migration（见第 15 节），并以现有 `schema.prisma` 为准执行。
 3. 先实现双 ID 编解码库（含验签、404 语义），作为 API 基础依赖。
 4. 实现 runs 创建与调度器（FIFO + 并发=1 + 状态流转）。
 5. 实现执行器（spawn、日志落盘、超时、取消、清理）。
@@ -324,3 +324,28 @@
 4. 日志正在写入时，最后一条“半行”的处理规则。
 5. 文本编码约定（默认 UTF-8 或其他）。
 6. 进入 logs API 开发前，先定稿以上细则，并同步单元/集成测试用例。
+
+## 15. 延期基线（TODO 管理）
+
+### 15.1 Prisma 基建触发条件
+
+以下任一条件成立时，触发“Prisma 校验/迁移命令 + 真实 DB 基线”补齐工作，且必须在同一 feature PR 内完成：
+
+1. 修改 `schema.prisma`。
+2. 在应用代码中引入 Prisma Client。
+3. 引入任意真实 DB 读写路径（不限于 run/case/suite 相关逻辑）。
+
+### 15.2 触发后必交付项
+
+1. Prisma 命令基线：至少提供 `validate` 与 `migration`（开发阶段）命令，并可在仓库内复现执行。
+2. 环境约定：明确 `DATABASE_URL` 的读取方式与样例配置（如 `.env.example`）。
+3. 真实 DB 路径决策：明确本地 DB 文件目录（不得与 `artifacts/` 混用）并补充 `.gitignore` 规则。
+4. migration 路径决策：明确 migration 目录位置并与仓库结构保持一致。
+5. 任务记录：在 PR 或任务说明中记录命令执行结果（成功/失败与原因）。
+
+### 15.3 验收标准
+
+1. 在触发该基线的 PR 中，Prisma 校验命令可执行且通过。
+2. migration 命令可执行并生成/应用预期迁移结果。
+3. `DATABASE_URL` 与本地 DB 目录规则可被他人按文档直接复现。
+4. 目录边界保持清晰：运行产物走 `artifacts/`，数据库文件走独立数据目录。
