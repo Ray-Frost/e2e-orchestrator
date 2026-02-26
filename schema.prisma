@@ -1,0 +1,104 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+//
+// 决策备忘对齐要点：
+// - DB 内部主键：runs.id / suites.id 为 INT 自增；所有外键指向内部 id
+// - 对外资源 id（string）不落库，由内部 id 可逆派生生成
+// - 字段命名统一 snake_case
+//
+
+enum run_status {
+  pending
+  running
+  success
+  abort
+  fail
+  timeout
+  cancelled
+}
+
+enum case_status {
+  pass
+  fail
+  skip
+}
+
+model Suite {
+  id         Int    @id @default(autoincrement())
+  suite_name String
+  command    String
+
+  runs       Run[]
+
+  // index(suite_name)（若需要按名称筛选/检索）
+  @@index([suite_name])
+  @@map("suites")
+}
+
+model Run {
+  id                  Int        @id @default(autoincrement())
+
+  suite_id            Int
+  suite               Suite      @relation(fields: [suite_id], references: [id], onDelete: Restrict)
+
+  // suite 名称快照（创建 run 时写入；不随 suites 改名更新）
+  suite_name_snapshot String
+
+  status              run_status @default(pending)
+  reason              String?
+  exit_code           Int?
+
+  // 入队时间：创建 run 并进入 pending；用于队列排序与审计。
+  created_at          DateTime   @default(now())
+  // 开始执行时间：probe 通过且准备/已 spawn runner；未进入执行阶段则为 NULL。
+  start_time          DateTime?
+  // 终态完成时间：状态写入终态且必需收尾完成（结果解析/落库、meta.json 写入等）；终态必填。
+  end_time            DateTime?
+  // 派生字段：end_time - start_time（ms）；仅在 start/end 存在时写入；不从 Playwright report 回填。
+  duration_ms         Int?
+
+  // 执行上下文（用于复盘/排障；DB 为权威）
+  command             String
+  cwd                 String
+  sut_base_url        String
+  probe_url           String
+
+  case_results        CaseResult[]
+
+  // 索引建议
+  @@index([suite_id])
+  @@index([created_at])
+  @@index([status])
+
+  @@map("runs")
+}
+
+model CaseResult {
+  id          Int         @id @default(autoincrement())
+
+  run_id      Int
+  run         Run         @relation(fields: [run_id], references: [id], onDelete: Cascade)
+
+  // 来自 demo-test-lib 的可读固定字符串（统计聚合主键）
+  test_lib_case_code String
+  case_title  String
+  status      case_status
+  // 仅 fail 写入；用于 last_failed_at 聚合
+  failed_at   DateTime?
+  // 预留字段（可选）
+  duration_ms Int?
+
+  // 索引建议
+  @@index([run_id])
+  @@index([test_lib_case_code, status, failed_at])
+  @@index([case_title, status, failed_at])
+
+  @@map("case_results")
+}
