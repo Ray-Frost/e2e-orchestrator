@@ -15,6 +15,10 @@ This document is a project map for contributors and coding agents working in thi
 
 ```text
 .
+├─ .github/
+│  └─ workflows/             # GitHub quality gates
+│     ├─ ci.yml              # PR gate: lint + build
+│     └─ release.yml         # Release gate: verify + publish
 ├─ apps/
 │  ├─ server/                  # NestJS backend scaffold
 │  │  ├─ src/                  # Current backend source root
