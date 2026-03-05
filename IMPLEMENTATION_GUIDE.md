@@ -167,22 +167,22 @@
 - 验签策略：支持多版本验签（按 id.version 选择 secret）
 - 轮换策略：旧版本提供退役窗口，窗口结束后下线验签
 
-## 10. 数据库模型与索引（以 schema.prisma 为准）
+## 10. 数据库模型与索引（以 `apps/server/prisma/schema.prisma` 为准）
 
-权威定义文件：`schema.prisma`（仓库根目录）。
+权威定义文件：`apps/server/prisma/schema.prisma`。
 
 ### 10.1 表结构（按 schema）
 
-本节以 `schema.prisma` 为唯一事实来源（source of truth），不在文档内重复列出字段明细。
+本节以 `apps/server/prisma/schema.prisma` 为唯一事实来源（source of truth），不在文档内重复列出字段明细。
 
 ### 10.2 枚举、默认值与关系
 
-本节以 `schema.prisma` 为唯一事实来源（source of truth），不在文档内重复列出枚举、默认值与关系明细。
+本节以 `apps/server/prisma/schema.prisma` 为唯一事实来源（source of truth），不在文档内重复列出枚举、默认值与关系明细。
 `runs.reason` 的业务口径与白名单规则见第 14.1、14.7。
 
 ### 10.3 索引（按 schema）
 
-本节以 `schema.prisma` 为唯一事实来源（source of truth），索引变更以 schema 与 migration 为准。
+本节以 `apps/server/prisma/schema.prisma` 为唯一事实来源（source of truth），索引变更以 schema 与 migration 为准。
 
 ## 11. API 最小契约（MVP）
 
@@ -240,7 +240,7 @@
 ## 13. 建议实施顺序（可直接执行）
 
 1. 配置跨仓联调：接入已就绪的 `sut-demo` 与 `demo-test-lib`（固化 `sut_base_url`、`command`、`cwd`）。
-2. 在触发条件满足的 feature PR 内落地 Prisma 基建与 migration（见第 15 节），并以现有 `schema.prisma` 为准执行。
+2. 在触发条件满足的 feature PR 内落地 Prisma 基建与 migration（见第 15 节），并以现有 `apps/server/prisma/schema.prisma` 为准执行。
 3. 先实现双 ID 编解码库（含验签、404 语义），作为 API 基础依赖。
 4. 实现 runs 创建与调度器（FIFO + 并发=1 + 状态流转）。
 5. 实现执行器（spawn、日志落盘、超时、取消、清理）。
@@ -331,16 +331,16 @@
 
 以下任一条件成立时，触发“Prisma 校验/迁移命令 + 真实 DB 基线”补齐工作，且必须在同一 feature PR 内完成：
 
-1. 修改 `schema.prisma`。
+1. 修改 `apps/server/prisma/schema.prisma`。
 2. 在应用代码中引入 Prisma Client。
 3. 引入任意真实 DB 读写路径（不限于 run/case/suite 相关逻辑）。
 
 ### 15.2 触发后必交付项
 
 1. Prisma 命令基线：至少提供 `validate` 与 `migration`（开发阶段）命令，并可在仓库内复现执行。
-2. 环境约定：明确 `DATABASE_URL` 的读取方式与样例配置（如 `.env.example`）。
+2. 环境约定：`DATABASE_URL` 仅由 `apps/server/.env` 提供，Prisma 命令由 `apps/server/package.json` 内统一加载该文件；缺失配置时按 fail-fast 自然报错。样例配置见 `apps/server/.env.example`。
 3. 真实 DB 路径决策：明确本地 DB 文件目录（不得与 `artifacts/` 混用）并补充 `.gitignore` 规则。
-4. migration 路径决策：明确 migration 目录位置并与仓库结构保持一致。
+4. migration 路径决策：明确 migration 目录位置（`apps/server/prisma/migrations/`）并与仓库结构保持一致。
 5. 任务记录：在 PR 或任务说明中记录命令执行结果（成功/失败与原因）。
 
 ### 15.3 验收标准

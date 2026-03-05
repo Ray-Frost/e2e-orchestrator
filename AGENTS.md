@@ -6,7 +6,7 @@ This document is a project map for contributors and coding agents working in thi
 
 - Use this file first to locate code and decide edit boundaries quickly.
 - Use `IMPLEMENTATION_GUIDE.md` for detailed behavior, workflow, API contract intent, and implementation constraints.
-- Use `schema.prisma` as the source of truth for database models, enums, relations, and indexes.
+- Use `apps/server/prisma/schema.prisma` as the source of truth for database models, enums, relations, and indexes.
 - If this file conflicts with those two sources, do not silently self-resolve in code: pause implementation in the affected scope, report the conflict with file+line evidence and options, wait for user approval, then implement and update this map.
 - Read in this order when starting a task: topology -> capability map -> rules -> source-of-truth docs.
 - Treat this file as orientation, not as a replacement for implementation specs.
@@ -22,6 +22,9 @@ This document is a project map for contributors and coding agents working in thi
 ├─ apps/
 │  ├─ server/                  # NestJS backend scaffold
 │  │  ├─ src/                  # Current backend source root
+│  │  ├─ prisma/
+│  │  │  ├─ schema.prisma      # DB schema source of truth
+│  │  │  └─ migrations/        # Prisma migration assets
 │  │  ├─ package.json          # Backend scripts and deps
 │  │  └─ tsconfig*.json
 │  └─ web/                     # React + Vite frontend scaffold
@@ -30,7 +33,6 @@ This document is a project map for contributors and coding agents working in thi
 │     ├─ package.json          # Frontend scripts and deps
 │     └─ vite.config.ts
 ├─ IMPLEMENTATION_GUIDE.md     # Implementation plan and constraints
-├─ schema.prisma               # DB schema source of truth
 ├─ package.json                # Workspace-level scripts
 └─ pnpm-workspace.yaml         # Workspace package boundaries
 ```
@@ -55,7 +57,7 @@ This document is a project map for contributors and coding agents working in thi
 
 - Backend runtime and API capabilities (`suites`, `runs`, `cancellations`, `logs`, `report`, `cases`, `statistics`, scheduler, executor, recovery): `apps/server/src`
 - Frontend pages and API consumption (`runs list`, `run detail`, `statistics`): `apps/web/src`
-- Database structure and indexes: `schema.prisma`
+- Database structure and indexes: `apps/server/prisma/schema.prisma`
 - Runtime artifact output root: `artifacts/` (repo root, created at runtime)
 - Rule: keep new implementation files inside these existing roots unless a new root is explicitly approved.
 
@@ -69,7 +71,8 @@ This document is a project map for contributors and coding agents working in thi
 - Run status, reason, and timing semantics must follow `IMPLEMENTATION_GUIDE.md` definitions.
 - Statistics must be derived from structured DB records, with `case_results` as the source for case-level aggregation.
 - For `logs` API implementation, finalize pending protocol details in `IMPLEMENTATION_GUIDE.md` section 14.9 before coding and tests.
-- `schema.prisma` remains authoritative for model/index definitions; do not treat doc prose as stronger than schema.
+- `apps/server/prisma/schema.prisma` remains authoritative for model/index definitions; do not treat doc prose as stronger than schema.
+- Environment variables are managed per app boundary: `DATABASE_URL` belongs to `apps/server/.env`, and root `.env` is not the source for server Prisma commands.
 - Cancellation semantics and error-body constraints should follow the implementation guide contract.
 - For data-shape disagreements, reconcile code to schema before extending API responses.
 
@@ -145,7 +148,7 @@ Edit preferred:
 - root-level project configs when needed (`package.json`, `pnpm-workspace.yaml`, etc.)
 - root-level quality gates and tooling configs (eslint/prettier/hook configs, lint-staged, task scripts)
 - Prisma schema and migration assets required by implementation tasks
-- `schema.prisma`
+- `apps/server/prisma/schema.prisma`
 - `IMPLEMENTATION_GUIDE.md` (only when intentionally updating plan text)
 - workspace config files related to toolchain behavior (`package.json`, eslint/ts/vite/nest configs)
 
@@ -171,7 +174,7 @@ Minimum verification before handoff:
 ## Priority of Truth
 
 1. Scope-based authority:
-   - `schema.prisma`: DB structure, enums, relations, indexes, and migration-facing data shape.
+   - `apps/server/prisma/schema.prisma`: DB structure, enums, relations, indexes, and migration-facing data shape.
    - `IMPLEMENTATION_GUIDE.md`: runtime behavior, API contracts, process semantics, and operational constraints.
 2. workspace and app package scripts/config for what is runnable now.
 3. this `AGENTS.md` for navigation and implementation location guidance.
@@ -185,7 +188,7 @@ Conflict handling rule:
   - conflicting statements with file+line references
   - expected impact/risk if unresolved
   - option A/B and a recommended option
-- Apply scope-based authority when proposing options: `schema.prisma` for DB shape; `IMPLEMENTATION_GUIDE.md` for behavior/API; then fallback to runnable scripts/config.
+- Apply scope-based authority when proposing options: `apps/server/prisma/schema.prisma` for DB shape; `IMPLEMENTATION_GUIDE.md` for behavior/API; then fallback to runnable scripts/config.
 - Wait for explicit user approval before implementing conflict-dependent code and before updating this file.
 - After approval, implement the agreed resolution and update this file to restore consistency.
 - Do not resolve conflicts by guessing undocumented behavior.
