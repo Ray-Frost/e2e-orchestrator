@@ -246,13 +246,12 @@
 5. 实现执行器（spawn、日志落盘、超时、取消、清理）。
 6. 实现产物路径推导与 meta.json 写入。
 7. 在 `demo-test-lib` 引入 `test_lib_case_code`（辅助函数传参方式）并补齐现有用例。
-8. 实现本地强校验（格式校验 + 全仓唯一），接入 pre-commit。
-9. 实现 results 解析与批量入库、runs 摘要回写（`test_lib_case_code` 必填，缺失按 `parse_or_write_error` 处理）。
-10. 实现 statistics 聚合查询（按 `test_lib_case_code` 聚合；`last_failed_at` 并列时取最大 internal_run_id）。
-11. 实现 logs API 字节偏移 cursor 协议与分页返回 `next_cursor`。
-12. 实现前端三页面并联调 API（cases/statistics 展示 `test_lib_case_code + case_title`）。
-13. 实现重启恢复逻辑与一致性校验脚本。
-14. 用场景集回归（success/fail/timeout/cancelled/abort/probe_failed）。
+8. 实现 results 解析与批量入库、runs 摘要回写（`test_lib_case_code` 必填，缺失按 `parse_or_write_error` 处理）。
+9. 实现 statistics 聚合查询（按 `test_lib_case_code` 聚合；`last_failed_at` 并列时取最大 internal_run_id）。
+10. 实现 logs API 字节偏移 cursor 协议与分页返回 `next_cursor`。
+11. 实现前端三页面并联调 API（cases/statistics 展示 `test_lib_case_code + case_title`）。
+12. 实现重启恢复逻辑与一致性校验脚本。
+13. 用场景集回归（success/fail/timeout/cancelled/abort/probe_failed）。
 
 ## 14. 决策归档（已定稿）
 
@@ -275,7 +274,6 @@
 1. 在 `case_results` 落库 `test_lib_case_code`（`NOT NULL`）；v1 不新增 `case_key` 列。
 2. `test_lib_case_code` 使用全局可读枚举字符串（示例：`AUTH_LOGIN_INVALID_PASSWORD`）。
 3. `demo-test-lib` 使用辅助函数传参声明（例如 `caseTest(test_lib_case_code, case_title, fn)`）。
-4. 唯一性校验采用“本地脚本强校验 + pre-commit”。
 
 ### 14.4 logs cursor 协议
 

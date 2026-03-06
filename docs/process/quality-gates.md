@@ -5,6 +5,9 @@ This document is the detailed source for repository quality-gate rules. Keep `AG
 ## Quality Gates
 
 - Local pre-commit gate: run staged-only checks via Git native hook `.githooks/pre-commit` (executes `lint-staged`).
+- Hook activation (one-time, repo-local): `git config core.hooksPath .githooks`.
+- Hook path verification: `git config --get core.hooksPath` (expected output: `.githooks`).
+- Note: `core.hooksPath` is stored in `.git/config` and is not synced with repository files.
 - Handoff gate: run `pnpm lint` when staged changes include any non-Markdown files.
 - Markdown-only exception: if staged changes are only `*.md`, `pnpm lint` may be skipped before handoff.
 - Pre-merge gate (GitHub PR): require `.github/workflows/ci.yml` checks to pass.
