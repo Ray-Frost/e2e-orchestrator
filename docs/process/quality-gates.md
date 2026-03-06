@@ -1,6 +1,6 @@
 # Quality Gates
 
-This document is the detailed source for repository quality-gate rules. Keep `AGENTS.md` as the navigation/summary entrypoint and place gate details here.
+This document is the detailed source for repository quality-gate rules.
 
 ## Quality Gates
 

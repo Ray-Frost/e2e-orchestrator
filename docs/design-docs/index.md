@@ -56,10 +56,6 @@ Create an ADR when at least one condition is true:
 | ADR-0001 | Prisma Schema and Migration Artifacts Location | Accepted | 2026-03-05 | [ADR-0001-prisma-schema-location.md](./ADR-0001-prisma-schema-location.md)                   |
 | ADR-0002 | ESLint Typed-Linting Boundaries in Monorepo    | Accepted | 2026-03-06 | [ADR-0002-eslint-typed-linting-boundaries.md](./ADR-0002-eslint-typed-linting-boundaries.md) |
 
-## Note on Entry Files
-
-`README.md` provides a quick ADR introduction and links here. Full governance rules and the canonical ADR index are maintained in this file.
-
 ## Reference Reading
 
 - [Architecture Decision Records (ADR official site)](https://adr.github.io/)

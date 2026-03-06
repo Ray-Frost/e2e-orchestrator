@@ -5,6 +5,7 @@ This document is a project map for contributors and coding agents working in thi
 ## How to Use This Map
 
 - Use this file first to locate code and decide edit boundaries quickly.
+- Use `docs/README.md` as the default entrypoint and canonical root index for repository documentation under `docs/`.
 - Use `IMPLEMENTATION_GUIDE.md` for detailed behavior, workflow, API contract intent, and implementation constraints.
 - Use `apps/server/prisma/schema.prisma` as the source of truth for database models, enums, relations, and indexes.
 - If this file conflicts with those two sources, do not silently self-resolve in code: pause implementation in the affected scope, report the conflict with file+line evidence and options, wait for user approval, then implement and update this map.
@@ -32,6 +33,7 @@ This document is a project map for contributors and coding agents working in thi
 │     ├─ public/
 │     ├─ package.json          # Frontend scripts and deps
 │     └─ vite.config.ts
+├─ docs/                       # Repository documentation subtree (root index: docs/README.md)
 ├─ IMPLEMENTATION_GUIDE.md     # Implementation plan and constraints
 ├─ package.json                # Workspace-level scripts
 └─ pnpm-workspace.yaml         # Workspace package boundaries
@@ -39,6 +41,7 @@ This document is a project map for contributors and coding agents working in thi
 
 - `apps/server` is the backend workspace package (`name: server`).
 - `apps/web` is the frontend workspace package (`name: web`).
+- `docs/README.md` is the root entrypoint and canonical index for documentation stored under `docs/`.
 - Root package scripts provide dev entrypoints and unified lint/format workflows for workspace packages.
 - Existing `dist/` folders are build outputs, not the primary source-edit target.
 - Existing `node_modules/` folders are dependency caches and should not be edited.
@@ -48,6 +51,7 @@ This document is a project map for contributors and coding agents working in thi
 - Backend is still mostly the NestJS starter skeleton (`main.ts`, `app.module.ts`) and does not yet implement planned business modules.
 - Frontend is still mostly the Vite React starter UI and does not yet implement planned pages.
 - `IMPLEMENTATION_GUIDE.md` defines the target platform behavior that is expected to be implemented incrementally in this repo.
+- `docs/` now provides the navigation layer for detailed process docs and ADR records without turning this file into a full doc index.
 - Treat current source tree as a scaffold baseline plus implementation guide as the intended target capability set.
 - Runtime artifact folder `artifacts/` is part of planned behavior and may be created during implementation/runtime.
 - Current readmes under app workspaces are starter templates and not project-specific guides yet.
@@ -138,19 +142,16 @@ CI/release workflows:
 - `ci.yml`: PR to `main` runs lint + build gates.
 - `release.yml`: tag `v*`/manual dispatch runs verify gate before publish step.
 
-## Quality Gates (Summary)
+## Documentation Navigation
 
-- Local pre-commit gate: run staged-only checks via Git native hook `.githooks/pre-commit` (executes `lint-staged`).
-- Handoff gate: run `pnpm lint` when staged changes include any non-Markdown files.
-- Markdown-only exception: if staged changes are only `*.md`, `pnpm lint` may be skipped before handoff.
-- Pre-merge gate (GitHub PR): require `.github/workflows/ci.yml` checks to pass.
-- Pre-release gate (GitHub release flow): require `.github/workflows/release.yml` verify job to pass before publish.
-- Keep branch/ruleset protection aligned with CI checks (at least `CI / lint` and `CI / build`).
-- For DB-related changes in the same feature PR (DB shape/migrations/Prisma usage/DB conventions), run:
-  - `pnpm --filter server db:check`
-  - `pnpm --filter server db:migrate:status`
-  - `pnpm lint`
-- Full DB gate details (trigger matrix, schema-change requirements, environment boundaries, and checklist) are defined in `docs/process/quality-gates.md`.
+- Start docs discovery from `docs/README.md`.
+- Use `docs/README.md` for the canonical root `docs/` structure, registered doc areas, and maintenance rules.
+- Treat `docs/design-docs/**` as the home for ADRs and architecture decision history.
+- Keep this file focused on repository navigation and edit boundaries; do not expand it into a detailed `docs/**` index.
+
+## Process Requirements
+
+- Follow the repository quality gates before handoff. Use `docs/process/quality-gates.md` for the required checks, exceptions, and DB-gate rules.
 
 ## Safe Editing Boundaries
 
@@ -163,6 +164,9 @@ Edit preferred:
 - Prisma schema and migration assets required by implementation tasks
 - `apps/server/prisma/schema.prisma`
 - `IMPLEMENTATION_GUIDE.md` (only when intentionally updating plan text)
+- `docs/README.md` when updating the root docs navigation model
+- `docs/process/**` when intentionally updating process or quality-gate documentation
+- `docs/design-docs/**` when intentionally adding or revising ADR records and indexes
 - workspace config files related to toolchain behavior (`package.json`, eslint/ts/vite/nest configs)
 
 Treat as generated/runtime (not source of truth):
@@ -178,20 +182,18 @@ Editing hygiene:
 - Keep edits focused on task-relevant files and avoid broad refactors in scaffold areas.
 - Prefer small, traceable diffs that preserve this map's current-vs-target framing.
 
-Minimum verification before handoff:
-
-- Run `pnpm lint` when staged changes include any non-Markdown files.
-- If staged changes are only `*.md`, `pnpm lint` may be skipped.
-- Local gates do not require running build commands; build regressions are covered by pre-merge/release CI gates.
-- For Prisma/DB-related feature work, run and record the `DB Gate` commands defined in `docs/process/quality-gates.md`.
-
 ## Priority of Truth
 
 1. Scope-based authority:
    - `apps/server/prisma/schema.prisma`: DB structure, enums, relations, indexes, and migration-facing data shape.
    - `IMPLEMENTATION_GUIDE.md`: runtime behavior, API contracts, process semantics, and operational constraints.
-2. workspace and app package scripts/config for what is runnable now.
-3. this `AGENTS.md` for navigation and implementation location guidance.
+2. Documentation governance and detail docs:
+   - `docs/README.md`: canonical root structure and registration rules for the `docs/` subtree.
+   - `docs/process/**`: detailed contributor-process and quality-gate rules.
+   - `docs/design-docs/**`: ADRs and accepted architecture decision history.
+   - These docs do not override the DB or runtime/API authorities listed above.
+3. workspace and app package scripts/config for what is runnable now.
+4. this `AGENTS.md` for navigation and implementation location guidance.
 
 Conflict handling rule:
 
