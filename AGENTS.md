@@ -93,6 +93,7 @@ Root workspace:
 pnpm dev:web
 pnpm dev:server
 pnpm lint
+pnpm format:check
 pnpm lint:web
 pnpm lint:server
 pnpm lint:fix
@@ -105,21 +106,27 @@ Frontend workspace (`web`):
 ```bash
 pnpm --filter web dev
 pnpm --filter web build
+pnpm --filter web format:check
+pnpm --filter web lint
 pnpm --filter web preview
 ```
 
 - Run frontend commands from root or target package context.
-- Frontend lint entrypoint is unified at root (`pnpm lint:web` / `pnpm lint:web:fix`); `web` package lint scripts are wrappers.
+- Frontend lint implementation is owned by the `web` package; root `pnpm lint:web` / `pnpm lint:web:fix` remain aggregate entrypoints.
+- Frontend format implementation is owned by the `web` package; root `pnpm format:check` / `pnpm format:write` remain aggregate entrypoints.
 
 Backend workspace (`server`):
 
 ```bash
 pnpm --filter server start:dev
 pnpm --filter server build
+pnpm --filter server format:check
+pnpm --filter server lint
 ```
 
 - Run backend commands from root or target package context.
-- Backend lint entrypoint is unified at root (`pnpm lint:server` / `pnpm lint:server:fix`); `server` package lint scripts are wrappers.
+- Backend lint implementation is owned by the `server` package; root `pnpm lint:server` / `pnpm lint:server:fix` remain aggregate entrypoints.
+- Backend format implementation is owned by the `server` package; root `pnpm format:check` / `pnpm format:write` remain aggregate entrypoints.
 
 CI/release workflows:
 
@@ -131,13 +138,19 @@ CI/release workflows:
 - `ci.yml`: PR to `main` runs lint + build gates.
 - `release.yml`: tag `v*`/manual dispatch runs verify gate before publish step.
 
-## Quality Gates (Current Decision)
+## Quality Gates (Summary)
 
-- Daily coding gate (local): `pnpm lint` only.
+- Local pre-commit gate: run staged-only checks via Git native hook `.githooks/pre-commit` (executes `lint-staged`).
+- Handoff gate: run `pnpm lint` when staged changes include any non-Markdown files.
+- Markdown-only exception: if staged changes are only `*.md`, `pnpm lint` may be skipped before handoff.
 - Pre-merge gate (GitHub PR): require `.github/workflows/ci.yml` checks to pass.
 - Pre-release gate (GitHub release flow): require `.github/workflows/release.yml` verify job to pass before publish.
 - Keep branch/ruleset protection aligned with CI checks (at least `CI / lint` and `CI / build`).
-- Prisma/DB baseline requirements are defined in `IMPLEMENTATION_GUIDE.md` deferred-baseline section.
+- For DB-related changes in the same feature PR (DB shape/migrations/Prisma usage/DB conventions), run:
+  - `pnpm --filter server db:check`
+  - `pnpm --filter server db:migrate:status`
+  - `pnpm lint`
+- Full DB gate details (trigger matrix, schema-change requirements, environment boundaries, and checklist) are defined in `docs/process/quality-gates.md`.
 
 ## Safe Editing Boundaries
 
@@ -167,9 +180,10 @@ Editing hygiene:
 
 Minimum verification before handoff:
 
-- `pnpm lint`
-- Local daily gate does not require running build commands; build regressions are covered by pre-merge/release CI gates.
-- For Prisma/DB-related feature work, follow `IMPLEMENTATION_GUIDE.md` deferred-baseline requirements.
+- Run `pnpm lint` when staged changes include any non-Markdown files.
+- If staged changes are only `*.md`, `pnpm lint` may be skipped.
+- Local gates do not require running build commands; build regressions are covered by pre-merge/release CI gates.
+- For Prisma/DB-related feature work, run and record the `DB Gate` commands defined in `docs/process/quality-gates.md`.
 
 ## Priority of Truth
 

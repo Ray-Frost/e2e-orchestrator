@@ -3,6 +3,8 @@
 
 .env
 
+.codex
+
 node_modules/
 pnpm-debug.log*
 

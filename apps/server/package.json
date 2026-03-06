@@ -13,12 +13,14 @@
     "db:migrate:dev": "prisma migrate dev --schema ./prisma/schema.prisma",
     "db:migrate:status": "prisma migrate status --schema ./prisma/schema.prisma",
     "db:migrate:deploy": "prisma migrate deploy --schema ./prisma/schema.prisma",
-    "format": "pnpm -C ../.. exec prettier --write \"apps/server/src/**/*.ts\"",
+    "format": "pnpm run format:write",
+    "format:check": "pnpm exec prettier --check \"src/**/*.ts\" \"*.{mjs,json}\"",
+    "format:write": "pnpm exec prettier --write \"src/**/*.ts\" \"*.{mjs,json}\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main",
-    "lint": "pnpm -C ../.. lint:server",
-    "lint:fix": "pnpm -C ../.. lint:server:fix"
+    "lint": "pnpm exec eslint --config eslint.config.mjs \"src/**/*.ts\" --max-warnings 0 --no-warn-ignored",
+    "lint:fix": "pnpm exec eslint --config eslint.config.mjs \"src/**/*.ts\" --fix --max-warnings 0 --no-warn-ignored"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

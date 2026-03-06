@@ -51,9 +51,10 @@ Create an ADR when at least one condition is true:
 
 ## ADR Index
 
-| ADR ID | Title | Status | Date | File |
-| --- | --- | --- | --- | --- |
-| ADR-0001 | Prisma Schema and Migration Artifacts Location | Accepted | 2026-03-05 | [ADR-0001-prisma-schema-location.md](./ADR-0001-prisma-schema-location.md) |
+| ADR ID   | Title                                          | Status   | Date       | File                                                                                         |
+| -------- | ---------------------------------------------- | -------- | ---------- | -------------------------------------------------------------------------------------------- |
+| ADR-0001 | Prisma Schema and Migration Artifacts Location | Accepted | 2026-03-05 | [ADR-0001-prisma-schema-location.md](./ADR-0001-prisma-schema-location.md)                   |
+| ADR-0002 | ESLint Typed-Linting Boundaries in Monorepo    | Accepted | 2026-03-06 | [ADR-0002-eslint-typed-linting-boundaries.md](./ADR-0002-eslint-typed-linting-boundaries.md) |
 
 ## Note on Entry Files
 

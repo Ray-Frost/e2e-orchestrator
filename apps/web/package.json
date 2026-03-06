@@ -6,8 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "pnpm -C ../.. lint:web",
-    "lint:fix": "pnpm -C ../.. lint:web:fix",
+    "format": "pnpm run format:write",
+    "format:check": "pnpm exec prettier --check \"src/**/*.{ts,tsx,js,mjs,cjs,json,css}\" \"*.{ts,tsx,js,mjs,cjs,json,css}\"",
+    "format:write": "pnpm exec prettier --write \"src/**/*.{ts,tsx,js,mjs,cjs,json,css}\" \"*.{ts,tsx,js,mjs,cjs,json,css}\"",
+    "lint": "pnpm exec eslint --config eslint.config.js \"src/**/*.{ts,tsx}\" \"vite.config.ts\" --max-warnings 0 --no-warn-ignored",
+    "lint:fix": "pnpm exec eslint --config eslint.config.js \"src/**/*.{ts,tsx}\" \"vite.config.ts\" --fix --max-warnings 0 --no-warn-ignored",
     "preview": "vite preview"
   },
   "dependencies": {

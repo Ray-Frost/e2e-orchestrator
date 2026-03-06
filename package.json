@@ -6,15 +6,21 @@
   "scripts": {
     "dev:web": "pnpm --filter web dev",
     "dev:server": "pnpm --filter server start:dev",
-    "lint:web": "pnpm exec eslint --config apps/web/eslint.config.js \"apps/web/**/*.{ts,tsx}\" --max-warnings 0 --no-warn-ignored",
-    "lint:web:fix": "pnpm exec eslint --config apps/web/eslint.config.js \"apps/web/**/*.{ts,tsx}\" --fix --max-warnings 0 --no-warn-ignored",
-    "lint:server": "pnpm exec eslint --config apps/server/eslint.config.mjs \"apps/server/src/**/*.ts\" --max-warnings 0 --no-warn-ignored",
-    "lint:server:fix": "pnpm exec eslint --config apps/server/eslint.config.mjs \"apps/server/src/**/*.ts\" --fix --max-warnings 0 --no-warn-ignored",
-    "lint:tooling": "pnpm exec eslint --config eslint.config.mjs \"eslint.config.mjs\" \"apps/*/eslint.config.{js,mjs,cjs}\" --max-warnings 0 --no-warn-ignored",
-    "lint:tooling:fix": "pnpm exec eslint --config eslint.config.mjs \"eslint.config.mjs\" \"apps/*/eslint.config.{js,mjs,cjs}\" --fix --max-warnings 0 --no-warn-ignored",
+    "format:web:check": "pnpm --filter web format:check",
+    "format:web:write": "pnpm --filter web format:write",
+    "format:server:check": "pnpm --filter server format:check",
+    "format:server:write": "pnpm --filter server format:write",
+    "format:root:check": "pnpm exec prettier --check \"eslint.config.mjs\" \"eslint.shared.mjs\" \"*.{json,mjs,js,cjs,yml,yaml}\"",
+    "format:root:write": "pnpm exec prettier --write \"eslint.config.mjs\" \"eslint.shared.mjs\" \"*.{json,mjs,js,cjs,yml,yaml}\"",
+    "lint:web": "pnpm --filter web lint",
+    "lint:web:fix": "pnpm --filter web lint:fix",
+    "lint:server": "pnpm --filter server lint",
+    "lint:server:fix": "pnpm --filter server lint:fix",
+    "lint:tooling": "pnpm exec eslint --config eslint.config.mjs \"eslint.config.mjs\" \"eslint.shared.mjs\" \"apps/*/eslint.config.{js,mjs,cjs}\" --max-warnings 0 --no-warn-ignored",
+    "lint:tooling:fix": "pnpm exec eslint --config eslint.config.mjs \"eslint.config.mjs\" \"eslint.shared.mjs\" \"apps/*/eslint.config.{js,mjs,cjs}\" --fix --max-warnings 0 --no-warn-ignored",
     "lint:eslint": "pnpm lint:web && pnpm lint:server && pnpm lint:tooling",
-    "format:check": "pnpm exec prettier --check \"apps/**/*.{ts,tsx,js,mjs,cjs,json,css}\" \"*.{json,mjs,js,cjs,yml,yaml}\"",
-    "format:write": "pnpm exec prettier --write \"apps/**/*.{ts,tsx,js,mjs,cjs,json,css}\" \"*.{json,mjs,js,cjs,yml,yaml}\"",
+    "format:check": "pnpm format:web:check && pnpm format:server:check && pnpm format:root:check",
+    "format:write": "pnpm format:web:write && pnpm format:server:write && pnpm format:root:write",
     "lint": "pnpm lint:eslint && pnpm format:check",
     "lint:fix": "pnpm lint:web:fix && pnpm lint:server:fix && pnpm lint:tooling:fix && pnpm format:write"
   },
@@ -25,7 +31,22 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.26",
     "globals": "^16.5.0",
+    "lint-staged": "^16.2.6",
     "prettier": "^3.4.2",
     "typescript-eslint": "^8.56.1"
+  },
+  "lint-staged": {
+    "apps/web/**/*.{ts,tsx}": [
+      "pnpm exec eslint --config apps/web/eslint.config.js --max-warnings 0 --no-warn-ignored"
+    ],
+    "apps/server/src/**/*.ts": [
+      "pnpm exec eslint --config apps/server/eslint.config.mjs --max-warnings 0 --no-warn-ignored"
+    ],
+    "{eslint.config.mjs,eslint.shared.mjs,apps/*/eslint.config.{js,mjs,cjs}}": [
+      "pnpm exec eslint --config eslint.config.mjs --max-warnings 0 --no-warn-ignored"
+    ],
+    "**/*.{md,json,yml,yaml}": [
+      "pnpm exec prettier --check"
+    ]
   }
 }
