@@ -1,0 +1,15 @@
+# misc
+.DS_Store
+
+.env
+
+.codex
+
+node_modules/
+pnpm-debug.log*
+
+apps/*/node_modules/
+apps/*/dist/
+/apps/server/.data/
+
+*.tsbuildinfo

@@ -1,0 +1,52 @@
+{
+  "name": "e2e-orchestrator",
+  "private": true,
+  "version": "0.0.0",
+  "packageManager": "pnpm@10.30.3+sha512.c961d1e0a2d8e354ecaa5166b822516668b7f44cb5bd95122d590dd81922f606f5473b6d23ec4a5be05e7fcd18e8488d47d978bbe981872f1145d06e9a740017",
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "dev:server": "pnpm --filter server start:dev",
+    "format:web:check": "pnpm --filter web format:check",
+    "format:web:write": "pnpm --filter web format:write",
+    "format:server:check": "pnpm --filter server format:check",
+    "format:server:write": "pnpm --filter server format:write",
+    "format:root:check": "pnpm exec prettier --check \"eslint.config.mjs\" \"eslint.shared.mjs\" \"*.{json,mjs,js,cjs,yml,yaml}\"",
+    "format:root:write": "pnpm exec prettier --write \"eslint.config.mjs\" \"eslint.shared.mjs\" \"*.{json,mjs,js,cjs,yml,yaml}\"",
+    "lint:web": "pnpm --filter web lint",
+    "lint:web:fix": "pnpm --filter web lint:fix",
+    "lint:server": "pnpm --filter server lint",
+    "lint:server:fix": "pnpm --filter server lint:fix",
+    "lint:tooling": "pnpm exec eslint --config eslint.config.mjs \"eslint.config.mjs\" \"eslint.shared.mjs\" \"apps/*/eslint.config.{js,mjs,cjs}\" --max-warnings 0 --no-warn-ignored",
+    "lint:tooling:fix": "pnpm exec eslint --config eslint.config.mjs \"eslint.config.mjs\" \"eslint.shared.mjs\" \"apps/*/eslint.config.{js,mjs,cjs}\" --fix --max-warnings 0 --no-warn-ignored",
+    "lint:eslint": "pnpm lint:web && pnpm lint:server && pnpm lint:tooling",
+    "format:check": "pnpm format:web:check && pnpm format:server:check && pnpm format:root:check",
+    "format:write": "pnpm format:web:write && pnpm format:server:write && pnpm format:root:write",
+    "lint": "pnpm lint:eslint && pnpm format:check",
+    "lint:fix": "pnpm lint:web:fix && pnpm lint:server:fix && pnpm lint:tooling:fix && pnpm format:write"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.3",
+    "eslint": "^9.39.3",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.26",
+    "globals": "^16.5.0",
+    "lint-staged": "^16.2.6",
+    "prettier": "^3.4.2",
+    "typescript-eslint": "^8.56.1"
+  },
+  "lint-staged": {
+    "apps/web/**/*.{ts,tsx}": [
+      "pnpm exec eslint --config apps/web/eslint.config.js --max-warnings 0 --no-warn-ignored"
+    ],
+    "apps/server/src/**/*.ts": [
+      "pnpm exec eslint --config apps/server/eslint.config.mjs --max-warnings 0 --no-warn-ignored"
+    ],
+    "{eslint.config.mjs,eslint.shared.mjs,apps/*/eslint.config.{js,mjs,cjs}}": [
+      "pnpm exec eslint --config eslint.config.mjs --max-warnings 0 --no-warn-ignored"
+    ],
+    "**/*.{md,json,yml,yaml}": [
+      "pnpm exec prettier --check"
+    ]
+  }
+}

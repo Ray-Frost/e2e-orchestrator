@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "eslint.config.mjs",
+    "eslint.shared.mjs",
+    "apps/*/eslint.config.js",
+    "apps/*/eslint.config.mjs",
+    "apps/*/eslint.config.cjs"
+  ]
+}

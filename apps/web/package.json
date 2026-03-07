@@ -1,0 +1,28 @@
+{
+  "name": "web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "format": "pnpm run format:write",
+    "format:check": "pnpm exec prettier --check \"src/**/*.{ts,tsx,js,mjs,cjs,json,css}\" \"*.{ts,tsx,js,mjs,cjs,json,css}\"",
+    "format:write": "pnpm exec prettier --write \"src/**/*.{ts,tsx,js,mjs,cjs,json,css}\" \"*.{ts,tsx,js,mjs,cjs,json,css}\"",
+    "lint": "pnpm exec eslint --config eslint.config.js \"src/**/*.{ts,tsx}\" \"vite.config.ts\" --max-warnings 0 --no-warn-ignored",
+    "lint:fix": "pnpm exec eslint --config eslint.config.js \"src/**/*.{ts,tsx}\" \"vite.config.ts\" --fix --max-warnings 0 --no-warn-ignored",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.1"
+  }
+}
