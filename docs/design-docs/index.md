@@ -55,6 +55,7 @@ Create an ADR when at least one condition is true:
 | -------- | ---------------------------------------------- | -------- | ---------- | -------------------------------------------------------------------------------------------- |
 | ADR-0001 | Prisma Schema and Migration Artifacts Location | Accepted | 2026-03-05 | [ADR-0001-prisma-schema-location.md](./ADR-0001-prisma-schema-location.md)                   |
 | ADR-0002 | ESLint Typed-Linting Boundaries in Monorepo    | Accepted | 2026-03-06 | [ADR-0002-eslint-typed-linting-boundaries.md](./ADR-0002-eslint-typed-linting-boundaries.md) |
+| ADR-0003 | Single Numeric Resource IDs                    | Accepted | 2026-03-16 | [ADR-0003-single-numeric-resource-ids.md](./ADR-0003-single-numeric-resource-ids.md)         |
 
 ## Reference Reading
 

@@ -17,17 +17,21 @@ This document is the detailed source for repository quality-gate rules.
 
 ## DB Gate (Prisma/DB Feature Work)
 
-- Trigger this gate in the same feature PR when any of the following happens:
-  - `apps/server/prisma/schema.prisma` changes.
+- Trigger the full DB Gate in the same feature PR when any of the following happens:
+  - `apps/server/prisma/schema.prisma` changes in a way that affects models, fields, relations, enums, defaults, or indexes.
   - Any file under `apps/server/prisma/migrations/**` changes.
   - Application code under `apps/server/src/**` introduces Prisma Client usage.
   - Server DB scripts or `DATABASE_URL` conventions are changed.
-- Required commands for triggered PRs:
+- Full DB Gate commands:
   - `pnpm --filter server db:check`
   - `pnpm --filter server db:migrate:status`
   - `pnpm lint`
-- Schema-change add-on requirements:
-  - Commit migration assets under `apps/server/prisma/migrations/`.
+- Comment-only or documentation-only edits in `apps/server/prisma/schema.prisma` run a reduced DB Gate:
+  - `pnpm --filter server db:check`
+  - `pnpm lint`
+- Schema-shape change add-on requirements:
+  - When models, fields, relations, enums, defaults, or indexes change, commit migration assets under `apps/server/prisma/migrations/`.
+  - Comment-only or documentation-only edits to `apps/server/prisma/schema.prisma` do not require new migration assets or `db:migrate:status`.
   - Record command outcomes (pass/fail; include reason when failed) in the final handoff note.
 - Environment and directory boundary requirements:
   - `DATABASE_URL` is sourced from `apps/server/.env` (example in `apps/server/.env.example`).
@@ -36,20 +40,18 @@ This document is the detailed source for repository quality-gate rules.
 
 ## Trigger Matrix
 
-| Change in feature PR                                   | Trigger DB Gate |
-| ------------------------------------------------------ | --------------- |
-| `apps/server/prisma/schema.prisma` modified            | Yes             |
-| Any `apps/server/prisma/migrations/**` file modified   | Yes             |
-| New Prisma Client usage under `apps/server/src/**`     | Yes             |
-| Server DB scripts or `DATABASE_URL` convention changed | Yes             |
-| Other changes with no DB impact                        | No              |
+| Change in feature PR                                         | Gate            |
+| ------------------------------------------------------------ | --------------- |
+| `apps/server/prisma/schema.prisma` comment/doc only modified | Reduced DB Gate |
+| `apps/server/prisma/schema.prisma` schema shape modified     | Full DB Gate    |
+| Any `apps/server/prisma/migrations/**` file modified         | Full DB Gate    |
+| New Prisma Client usage under `apps/server/src/**`           | Full DB Gate    |
+| Server DB scripts or `DATABASE_URL` convention changed       | Full DB Gate    |
+| Other changes with no DB impact                              | No DB Gate      |
 
 ## Execution Checklist
 
-1. Determine whether DB Gate is triggered by checking the trigger matrix above.
-2. If triggered, run:
-   - `pnpm --filter server db:check`
-   - `pnpm --filter server db:migrate:status`
-   - `pnpm lint`
-3. If schema changed, commit migration assets under `apps/server/prisma/migrations/`.
+1. Determine whether the change triggers the reduced DB Gate or full DB Gate by checking the trigger matrix above.
+2. Run the command set for the applicable gate (`Reduced DB Gate` or `Full DB Gate`) defined above.
+3. If the Prisma schema shape changed (models, fields, relations, enums, defaults, or indexes), commit migration assets under `apps/server/prisma/migrations/`.
 4. Record command outcomes (pass/fail; include reason when failed) in the final handoff note.

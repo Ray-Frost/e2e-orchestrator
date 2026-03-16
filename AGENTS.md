@@ -68,13 +68,14 @@ This document is a project map for contributors and coding agents working in thi
 ## Critical Project Rules (Minimal Set)
 
 - Use `snake_case` for API fields, database fields, and JSON fields.
-- API must expose external resource identifier field name as `id` (string).
-- Internal numeric primary keys (`runs.id`, `suites.id`) stay internal and are not exposed directly to frontend consumers.
-- Keep dual-ID traceability in diagnostics: logs and `meta.json` should allow mapping between internal ID and external string ID.
+- API must expose resource identifier field name as `id` (number).
+- Numeric primary keys (`runs.id`, `suites.id`) are exposed directly as resource IDs.
+- Use `run_id` / `suite_id` consistently in diagnostics and `meta.json` when resource-specific naming is needed.
+- Do not justify repository decisions with academic framing; use explicit scope, constraints, and maintenance tradeoffs.
 - Follow SQLite single-writer discipline in runtime design: avoid parallel write patterns for the same run pipeline.
 - Run status, reason, and timing semantics must follow `IMPLEMENTATION_GUIDE.md` definitions.
 - Statistics must be derived from structured DB records, with `case_results` as the source for case-level aggregation.
-- For `logs` API implementation, finalize pending protocol details in `IMPLEMENTATION_GUIDE.md` section 14.9 before coding and tests.
+- For `logs` API implementation, finalize pending protocol details in `IMPLEMENTATION_GUIDE.md` section 13.8 before coding and tests.
 - `apps/server/prisma/schema.prisma` remains authoritative for model/index definitions; do not treat doc prose as stronger than schema.
 - Environment variables are managed per app boundary: `DATABASE_URL` belongs to `apps/server/.env`, and root `.env` is not the source for server Prisma commands.
 - Cancellation semantics and error-body constraints should follow the implementation guide contract.
