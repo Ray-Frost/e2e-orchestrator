@@ -9,8 +9,8 @@ generator client {
 
 //
 // 决策备忘对齐要点：
-// - DB 内部主键：runs.id / suites.id 为 INT 自增；所有外键指向内部 id
-// - 对外资源 id（string）不落库，由内部 id 可逆派生生成
+// - runs.id / suites.id 为 INT 自增；所有外键继续指向该单一 id
+// - 直接对外暴露数据库主键作为资源 id（number）
 // - 字段命名统一 snake_case
 //
 

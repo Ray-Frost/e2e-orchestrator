@@ -40,10 +40,10 @@
 - 存储技术边界（v1）：不切换为 MySQL，保持 SQLite 单机方案。
 - 结果统计以数据库结构化明细为准（`case_results` 是统计唯一数据源）。
 - 用例统计主键使用 `test_lib_case_code`，`case_title` 仅用于展示。
-- API、数据库、JSON 字段名统一使用 snake_case；对外资源标识字段名固定为 `id`（string）。
-- API 仅暴露对外 string `id`，不暴露内部自增主键。
+- API、数据库、JSON 字段名统一使用 snake_case；对外资源标识字段名固定为 `id`（number）。
+- 直接暴露数据库自增主键作为资源 `id`。
 - DB 与文件产物必须可双向追溯。
-- 排障链路要求：服务端日志与 `meta.json` 必须同时记录 `internal_id` 与对外 `id`；前端与 API 不直接接触 `internal_id`。
+- 排障链路要求：服务端日志、`meta.json` 与 API 统一使用单一 `id` 语义；如需资源上下文，使用 `run_id` / `suite_id` 命名。
 
 ## 5. 总体架构与模块
 
@@ -98,7 +98,7 @@
 
 - 超时阈值默认 10 分钟，触发后终止进程并标记 `timeout`
 - 取消 API：`POST /api/runs/{id}/cancellations`
-- 统一终止入口：`terminate_run(internal_run_id, reason)`
+- 统一终止入口：`terminate_run(run_id, reason)`
 - `pending`：直接出队终止
 - `running`：优先 `SIGTERM`，短等待后 `SIGKILL`（针对 pgid）
 
@@ -110,9 +110,9 @@
 
 ## 8. 产物归档与 meta.json
 
-### 8.1 路径规则（由 internal_run_id 推导）
+### 8.1 路径规则（由 run_id 推导）
 
-- 根目录：`artifacts/run-<internal_run_id>/`
+- 根目录：`artifacts/run-<run_id>/`
 - 文件/目录：
   - `stdout.log`
   - `stderr.log`
@@ -127,8 +127,8 @@
 - 包含 `meta_schema_version`（默认 1）
 - 不维护 artifacts 索引（所有产物路径由约定推导）
 - 最小建议字段：
-  - `identity.run { id, internal_id }`
-  - `identity.suite { id, internal_id, suite_name_snapshot }`
+  - `identity.run { id }`
+  - `identity.suite { id, suite_name_snapshot }`
   - `execution { command, cwd }`
   - `config { sut_base_url, probe_url }`
   - `result { status, reason, exit_code, timeout_minutes }`
@@ -142,54 +142,31 @@
 - 冲突读法：以 DB 为准
 - 写入策略：`DB -> meta(best-effort)`；若 meta 写入失败，不回滚 DB，记录结构化告警日志。
 
-## 9. 双 ID 策略（必须先落地）
-
-### 9.1 原则
-
-- DB 使用内部 `INT` 主键：`suites.id`、`runs.id`
-- API 对外统一返回 string `id`
-- 外键与落盘目录均使用内部 id
-- 对外 id 默认不落库（派生值）
-
-### 9.2 协议
-
-- 格式：`<typePrefix><version>~<payload>~<sig>`
-- 待签名串：`<typePrefix><version>:<payload>`
-- `payload`：内部 id 的可逆编码（推荐 base36）
-- `sig`：`base64url(HMAC-SHA256(secret, signing_input))`
-- 前缀：`runs=r`，`suites=s`
-
-### 9.3 解析与错误语义
-
-- 接口先验签、再解码 internal id，再查 DB/文件
-- 任一步失败（格式、验签、类型不匹配、资源不存在）统一 `404`
-- 签发策略：始终使用最新 `version` 对外签发 id
-- 验签策略：支持多版本验签（按 id.version 选择 secret）
-- 轮换策略：旧版本提供退役窗口，窗口结束后下线验签
-
-## 10. 数据库模型与索引（以 `apps/server/prisma/schema.prisma` 为准）
+## 9. 数据库模型与索引（以 `apps/server/prisma/schema.prisma` 为准）
 
 权威定义文件：`apps/server/prisma/schema.prisma`。
 
-### 10.1 表结构（按 schema）
+### 9.1 表结构（按 schema）
 
 本节以 `apps/server/prisma/schema.prisma` 为唯一事实来源（source of truth），不在文档内重复列出字段明细。
 
-### 10.2 枚举、默认值与关系
+### 9.2 枚举、默认值与关系
 
 本节以 `apps/server/prisma/schema.prisma` 为唯一事实来源（source of truth），不在文档内重复列出枚举、默认值与关系明细。
-`runs.reason` 的业务口径与白名单规则见第 14.1、14.7。
+`runs.reason` 的业务口径与白名单规则见第 13.1、13.6。
 
-### 10.3 索引（按 schema）
+### 9.3 索引（按 schema）
 
 本节以 `apps/server/prisma/schema.prisma` 为唯一事实来源（source of truth），索引变更以 schema 与 migration 为准。
 
-## 11. API 最小契约（MVP）
+## 10. API 最小契约（MVP）
 
 - MVP 不引入分页参数；后续按数据规模再评估。
+- 所有响应体中的 `id`、`suite_id`、`last_run_id` 均为 number。
+- URL path param `{id}` 采用十进制整数字符串；服务端解析为 number。非法 id 格式返回 `400`，合法但不存在返回 `404`。
 
 - `GET /api/suites`
-- `POST /api/runs`（参数：suite 对外 id）
+- `POST /api/runs`（请求体：`suite_id`（number））
 - `GET /api/runs`
   - MVP：全量返回（按 `created_at` 倒序）
 - `GET /api/runs/{id}`
@@ -204,7 +181,7 @@
   - `cursor` 为字节偏移整数；响应返回 `next_cursor` 与 `has_more`
   - 非法 cursor 返回 `400`
   - MVP：仅开放 `stdout` 子资源；后续可扩展 `GET /api/runs/{id}/logs/stderr?tail&cursor`
-  - 待定细则：见 14.9（实现该 API 前定稿）
+  - 待定细则：见 13.8（实现该 API 前定稿）
 - `GET /api/runs/{id}/report`
   - 行为：可 `302` 跳转至 report 静态资源，或由后端反向代理返回 HTML
 - `GET /api/runs/{id}/cases`
@@ -213,7 +190,7 @@
 - `GET /api/statistics/failures`
   - 聚合键：`test_lib_case_code`
   - 返回：`test_lib_case_code`, `case_title`, `fail_count`, `last_failed_at`, `last_run_id`
-  - `last_failed_at` 并列时，`last_run_id` 取最大 internal_run_id 对应的对外 run.id
+  - `last_failed_at` 并列时，`last_run_id` 取最大 `run.id`
   - MVP：全量返回
 
 统一错误体：
@@ -231,31 +208,30 @@
 - `error` 仅返回 `message`，不返回 `code`。
 - 前端不基于 `message` 做程序分支，仅用于展示；如需分支，使用 HTTP 状态码与接口上下文。
 
-## 12. 前端页面最小实现
+## 11. 前端页面最小实现
 
 - runs 列表页：最近运行、状态、创建 run、取消入口
 - run 详情页：概览、日志 tail、报告入口、case 列表
 - statistics 页：按 `test_lib_case_code` 聚合失败统计，展示 `case_title`，支持跳转 `last_run_id`
 
-## 13. 建议实施顺序（可直接执行）
+## 12. 建议实施顺序（可直接执行）
 
 1. 配置跨仓联调：接入已就绪的 `sut-demo` 与 `demo-test-lib`（固化 `sut_base_url`、`command`、`cwd`）。
 2. 在触发条件满足的 feature PR 内落地 Prisma 基建与 migration，并以现有 `apps/server/prisma/schema.prisma` 为准执行。
-3. 先实现双 ID 编解码库（含验签、404 语义），作为 API 基础依赖。
-4. 实现 runs 创建与调度器（FIFO + 并发=1 + 状态流转）。
-5. 实现执行器（spawn、日志落盘、超时、取消、清理）。
-6. 实现产物路径推导与 meta.json 写入。
-7. 在 `demo-test-lib` 引入 `test_lib_case_code`（辅助函数传参方式）并补齐现有用例。
-8. 实现 results 解析与批量入库、runs 摘要回写（`test_lib_case_code` 必填，缺失按 `parse_or_write_error` 处理）。
-9. 实现 statistics 聚合查询（按 `test_lib_case_code` 聚合；`last_failed_at` 并列时取最大 internal_run_id）。
-10. 实现 logs API 字节偏移 cursor 协议与分页返回 `next_cursor`。
-11. 实现前端三页面并联调 API（cases/statistics 展示 `test_lib_case_code + case_title`）。
-12. 实现重启恢复逻辑与一致性校验脚本。
-13. 用场景集回归（success/fail/timeout/cancelled/abort/probe_failed）。
+3. 实现 runs 创建与调度器（FIFO + 并发=1 + 状态流转）。
+4. 实现执行器（spawn、日志落盘、超时、取消、清理）。
+5. 实现产物路径推导与 meta.json 写入。
+6. 在 `demo-test-lib` 引入 `test_lib_case_code`（辅助函数传参方式）并补齐现有用例。
+7. 实现 results 解析与批量入库、runs 摘要回写（`test_lib_case_code` 必填，缺失按 `parse_or_write_error` 处理）。
+8. 实现 statistics 聚合查询（按 `test_lib_case_code` 聚合；`last_failed_at` 并列时取最大 `run.id`）。
+9. 实现 logs API 字节偏移 cursor 协议与分页返回 `next_cursor`。
+10. 实现前端三页面并联调 API（cases/statistics 展示 `test_lib_case_code + case_title`）。
+11. 实现重启恢复逻辑与一致性校验脚本。
+12. 用场景集回归（success/fail/timeout/cancelled/abort/probe_failed）。
 
-## 14. 决策归档（已定稿）
+## 13. 决策归档（已定稿）
 
-### 14.1 运行状态、时间与 reason 口径
+### 13.1 运行状态、时间与 reason 口径
 
 1. 仅用户取消 = `cancelled`（`reason=user_cancelled`）；服务关闭/重启导致中断 = `abort`（`reason=server_shutdown/server_restart`）。
 2. 时间口径仅保留 `created_at`，不引入 `queued_time`。
@@ -263,36 +239,30 @@
 4. `fail` 原因码固定 4 项：`probe_failed` / `cases_failed` / `runner_exit_nonzero` / `parse_or_write_error`。
 5. `duration_ms` 仅在 `start_time` 与 `end_time` 均存在时写入；否则保持 `NULL`，禁止写 `0`。
 
-### 14.2 统计口径与并列规则
+### 13.2 统计口径与并列规则
 
 1. statistics 聚合主键使用 `test_lib_case_code`，不再以 `case_title` 作为聚合键。
 2. `case_title` 保留为展示文案字段。
-3. `last_failed_at` 并列时，`last_run_id` 取最大 internal_run_id 对应的对外 run.id。
+3. `last_failed_at` 并列时，`last_run_id` 取最大 `run.id`。
 
-### 14.3 `test_lib_case_code` 策略（v1）
+### 13.3 `test_lib_case_code` 策略（v1）
 
 1. 在 `case_results` 落库 `test_lib_case_code`（`NOT NULL`）；v1 不新增 `case_key` 列。
 2. `test_lib_case_code` 使用全局可读枚举字符串（示例：`AUTH_LOGIN_INVALID_PASSWORD`）。
 3. `demo-test-lib` 使用辅助函数传参声明（例如 `caseTest(test_lib_case_code, case_title, fn)`）。
 
-### 14.4 logs cursor 协议
+### 13.4 logs cursor 协议
 
 1. `GET /api/runs/{id}/logs/stdout` 的 `cursor` 定义为字节偏移整数。
 2. 接口返回 `next_cursor` 与 `has_more`；非法 cursor 返回 `400`。
 
-### 14.5 DB 与 meta 写入策略
+### 13.5 DB 与 meta 写入策略
 
 1. 写入顺序固定为 `DB -> meta(best-effort)`。
 2. 若 meta 写入失败，不回滚 DB，不改变 run 终态。
-3. 记录结构化告警日志（同时包含 internal id 与对外 id）。
+3. 记录结构化告警日志（按资源类型使用 `run_id` / `suite_id`）。
 
-### 14.6 对外 id 密钥轮换策略
-
-1. 签发：始终使用最新 `version`。
-2. 验签：按 id.version 支持多版本 secret。
-3. 退役：旧版本保留退役窗口，窗口结束后下线验签能力。
-
-### 14.7 reason 值归纳（当前实现）
+### 13.6 reason 值归纳（当前实现）
 
 1. 按 `runs.status` 分组：
    - `success`：`NULL`
@@ -302,19 +272,20 @@
    - `fail`：`probe_failed` / `cases_failed` / `runner_exit_nonzero` / `parse_or_write_error`
 2. `runs.reason` 当前保持 `String?`，由应用层按状态子集做白名单校验（暂不切 enum）。
 
-### 14.8 补充实施约束（并入）
+### 13.7 补充实施约束（并入）
 
 1. SQLite 写入稳健策略：启用 WAL；同一时刻仅一个写事务；同一 run 写入链路严格串行 `await`；禁止 `Promise.all` 并行写库。
 2. 存储技术边界（v1）：不切换为 MySQL，保持 SQLite 单机方案。
-3. 命名规范：API、数据库、JSON 字段统一 snake_case；对外资源标识字段固定为 `id`（string）。
-4. 排障链路：服务端日志与 `meta.json` 必须同时记录 `internal_id` 与对外 `id`；前端与 API 不直接接触 `internal_id`。
-5. 取消接口：请求体必须为空，不接收客户端自定义 `reason`，服务端固定 `reason=user_cancelled`；终态取消返回 `400`，保持统一错误体，`error.message` 仅返回可读文案（不携带 `status/reason` 结构化片段）。
-6. logs 接口（MVP）：`GET /api/runs/{id}/logs/stdout`，返回 `lines(string[])`、`next_cursor`、`has_more`；`cursor` 为字节偏移整数。后续可扩展 `/logs/stderr`。
-7. run 详情接口包含 `artifacts` 对象：`{ stdout_log, stderr_log, results_json, report_dir }`。
-8. report 接口行为：可 `302` 跳转或后端反向代理返回 HTML。
-9. 产物缺失访问语义：目标文件/目录不存在时 API 返回 `404`，页面提示“未生成/已被清理”。
+3. 命名规范：API、数据库、JSON 字段统一 snake_case；对外资源标识字段固定为 `id`（number）。
+4. 标识规则：直接暴露数据库自增主键作为资源 `id`。
+5. 排障链路：服务端日志与 `meta.json` 使用单一 `id` 语义；如需资源上下文，使用 `run_id` / `suite_id` 命名。
+6. 取消接口：请求体必须为空，不接收客户端自定义 `reason`；服务端固定 `reason=user_cancelled`。终态取消返回 `400`，保持统一错误体，`error.message` 仅返回可读文案（不携带 `status/reason` 结构化片段）。
+7. logs 接口（MVP）：`GET /api/runs/{id}/logs/stdout`，返回 `lines(string[])`、`next_cursor`、`has_more`；`cursor` 为字节偏移整数。后续可扩展 `/logs/stderr`。
+8. run 详情接口包含 `artifacts` 对象：`{ stdout_log, stderr_log, results_json, report_dir }`。
+9. report 接口行为：可 `302` 跳转或后端反向代理返回 HTML。
+10. 产物缺失访问语义：目标文件/目录不存在时 API 返回 `404`，页面提示“未生成/已被清理”。
 
-### 14.9 logs API 待定细则（实现前定稿）
+### 13.8 logs API 待定细则（实现前定稿）
 
 1. `lines` 的切分规则（`\n` / `\r\n`、是否保留换行符）。
 2. `next_cursor` 的精确类型与 `null` 条件。
