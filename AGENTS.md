@@ -14,6 +14,8 @@ This document is a project map for contributors and coding agents working in thi
 
 ## Repository Topology (Current)
 
+The tree below is intentionally selective. It highlights contributor-relevant roots and notable files, rather than serving as a complete repository listing.
+
 ```text
 .
 ├─ .github/
