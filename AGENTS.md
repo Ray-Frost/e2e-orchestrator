@@ -1,15 +1,15 @@
 # AGENTS.md
 
-This document is a project map for contributors and coding agents working in this repository. It explains where things live today, where planned capabilities should be implemented (without inventing new directory templates), and which constraints must be respected while building the E2E platform.
+This document is a project map for contributors and coding agents working in this repository. It explains where things live today, where planned capabilities should be implemented, and which repository-level constraints must be respected while building the E2E platform.
 
 ## How to Use This Map
 
 - Use this file first to locate code and decide edit boundaries quickly.
 - Use `docs/README.md` as the default entrypoint and canonical root index for repository documentation under `docs/`.
-- Use `IMPLEMENTATION_GUIDE.md` for detailed behavior, workflow, API contract intent, and implementation constraints.
+- Use `IMPLEMENTATION_GUIDE.md` for detailed runtime behavior, workflow, API contract intent, and implementation constraints.
 - Use `apps/server/prisma/schema.prisma` as the source of truth for database models, enums, relations, and indexes.
-- If this file conflicts with those two sources, use the conflict handling rule in `Priority of Truth`.
-- Read in this order when starting a task: topology -> capability map -> rules -> source-of-truth docs.
+- If this file conflicts with those sources, use the conflict handling rule in `Priority of Truth`.
+- Read in this order when starting a task: topology -> capability map -> repository rules -> source-of-truth docs.
 - Use this file as orientation and repository navigation.
 
 ## Repository Topology (Current)
@@ -19,19 +19,20 @@ The tree below is intentionally selective. It highlights contributor-relevant ro
 ```text
 .
 ├─ .github/
-│  └─ workflows/             # GitHub quality gates
-│     ├─ ci.yml              # PR gate: lint + build
-│     └─ release.yml         # Release gate: verify + publish
+│  └─ workflows/               # GitHub quality gates
+│     ├─ ci.yml                # PR gate: lint + build
+│     └─ release.yml           # Release gate: verify + publish
 ├─ apps/
-│  ├─ server/                  # NestJS backend scaffold
-│  │  ├─ src/                  # Current backend source root
+│  ├─ server/                  # Backend workspace package
+│  │  ├─ src/                  # Backend source root
 │  │  ├─ prisma/
 │  │  │  ├─ schema.prisma      # DB schema source of truth
 │  │  │  └─ migrations/        # Prisma migration assets
+│  │  ├─ README.md             # Backend package guide
 │  │  ├─ package.json          # Backend scripts and deps
 │  │  └─ tsconfig*.json
-│  └─ web/                     # React + Vite frontend scaffold
-│     ├─ src/                  # Current frontend source root
+│  └─ web/                     # Frontend workspace package
+│     ├─ src/                  # Frontend source root
 │     ├─ public/
 │     ├─ package.json          # Frontend scripts and deps
 │     └─ vite.config.ts
@@ -54,11 +55,9 @@ The tree below is intentionally selective. It highlights contributor-relevant ro
 - Frontend is still mostly the Vite React starter UI and does not yet implement planned pages.
 - Current operating model: a single human maintainer uses coding agents heavily for implementation and review assistance.
 - `IMPLEMENTATION_GUIDE.md` defines the target platform behavior that is expected to be implemented incrementally in this repo.
-- `docs/` now provides the navigation layer for detailed process docs and ADR records without turning this file into a full doc index.
-- Treat current source tree as a scaffold baseline plus implementation guide as the intended target capability set.
-- Runtime artifact folder `artifacts/` is part of planned behavior and may be created during implementation/runtime.
-- Current readmes under app workspaces are starter templates and not project-specific guides yet.
-- Status snapshot date: `2026-03-04` (refresh this section when major code/tooling baseline changes).
+- `docs/` provides the navigation layer for detailed process docs and ADR records without turning this file into a full doc index.
+- Runtime artifact folder `artifacts/` is part of planned behavior and may be created during implementation or runtime.
+- Status snapshot date: `2026-03-16` (refresh this section when major code or tooling baselines change).
 
 ## Capability-to-Location Map (No Speculative Paths)
 
@@ -67,31 +66,16 @@ The tree below is intentionally selective. It highlights contributor-relevant ro
 - Database structure and indexes: `apps/server/prisma/schema.prisma`
 - Runtime artifact output root: `artifacts/` (repo root, created at runtime)
 
-## Constraints
+## Repository Rules
 
 - Keep new implementation files inside the existing roots in this map. Add a new root only with explicit approval.
-- Treat `AGENTS.md` as repository navigation, not as the implementation spec or a detailed `docs/**` index.
+- Treat this root `AGENTS.md` as repository navigation, not as the implementation spec or a detailed `docs/**` index.
 - Optimize for a single-maintainer, agent-assisted workflow. Prefer simple, explicit, low-ceremony solutions over team-scaled patterns.
 - Do not add abstractions, ownership boundaries, review choreography, or extension points justified mainly by hypothetical future teammates or agent roles.
 - Preserve clarity and handoff-readiness through explicit code, small APIs, and focused docs, not through speculative architecture.
 - Use explicit scope, constraints, and maintenance tradeoffs for repository decisions. Do not use academic framing.
-- Keep runtime design within SQLite single-writer discipline. Avoid parallel write patterns for the same run pipeline.
 - Keep external `sut-demo` and `demo-test-lib` source outside this repository. Do not vendor external SUT or test-library source into the platform repo as part of normal implementation work.
 - When source authorities conflict or behavior is undocumented, do not guess or silently self-resolve. Use the conflict handling rule in `Priority of Truth`.
-
-## Critical Project Rules (Minimal Set)
-
-- Use `snake_case` for API fields, database fields, and JSON fields.
-- API must expose resource identifier field name as `id` (number).
-- Numeric primary keys (`runs.id`, `suites.id`) are exposed directly as resource IDs.
-- Use `run_id` / `suite_id` consistently in diagnostics and `meta.json` when resource-specific naming is needed.
-- Run status, reason, and timing semantics must follow `IMPLEMENTATION_GUIDE.md` definitions.
-- Statistics must be derived from structured DB records, with `case_results` as the source for case-level aggregation.
-- For `logs` API implementation, finalize pending protocol details in `IMPLEMENTATION_GUIDE.md` section 13.8 before coding and tests.
-- Treat `apps/server/prisma/schema.prisma` as authoritative for model/index definitions.
-- Use `apps/server/.env` as the `DATABASE_URL` source for server Prisma commands.
-- Cancellation semantics and error-body constraints should follow the implementation guide contract.
-- For data-shape disagreements, reconcile code to schema before extending API responses.
 
 ## Cross-Repo Integration Boundaries
 
@@ -144,7 +128,7 @@ pnpm --filter server lint
 - Backend lint implementation is owned by the `server` package; root `pnpm lint:server` / `pnpm lint:server:fix` remain aggregate entrypoints.
 - Backend format implementation is owned by the `server` package; root `pnpm format:check` / `pnpm format:write` remain aggregate entrypoints.
 
-CI/release workflows:
+CI and release workflows:
 
 ```bash
 .github/workflows/ci.yml
@@ -152,14 +136,14 @@ CI/release workflows:
 ```
 
 - `ci.yml`: PR to `main` runs lint + build gates.
-- `release.yml`: tag `v*`/manual dispatch runs verify gate before publish step.
+- `release.yml`: tag `v*` or manual dispatch runs verify gate before publish.
 
 ## Documentation Navigation
 
 - Start docs discovery from `docs/README.md`.
 - Use `docs/README.md` for the canonical root `docs/` structure, registered doc areas, and maintenance rules.
 - Treat `docs/design-docs/**` as the home for ADRs and architecture decision history.
-- Keep this file focused on repository navigation and edit boundaries. See `Constraints` for scope guardrails.
+- Keep this file focused on repository navigation and edit boundaries. See `Repository Rules` for scope guardrails.
 
 ## Process Requirements
 
@@ -182,7 +166,7 @@ Edit preferred:
 - `docs/design-docs/**` when intentionally adding or revising ADR records and indexes
 - workspace config files related to toolchain behavior (`package.json`, eslint/ts/vite/nest configs)
 
-Treat as generated/runtime (not source of truth):
+Treat as generated or runtime output:
 
 - `node_modules/**`
 - `apps/*/node_modules/**`
@@ -205,18 +189,18 @@ Editing hygiene:
    - `docs/process/**`: detailed contributor-process and quality-gate rules.
    - `docs/design-docs/**`: ADRs and accepted architecture decision history.
    - These docs are governance and detail references under the scope-based authorities listed above.
-3. workspace and app package scripts/config for what is runnable now.
-4. this `AGENTS.md` for navigation and implementation location guidance.
+3. Workspace and app package scripts or config for what is runnable now.
+4. This `AGENTS.md` for repository navigation and implementation location guidance.
 
 Conflict handling rule:
 
 - Classify conflict scope first:
-  - Hard-pause conflicts (must stop affected coding and wait for approval): DB schema/indexes/migrations; API contract shape/status code/error body; run status/reason/timing semantics; cancellation semantics.
-  - Soft-pause conflicts (can continue non-conflicting tasks): doc wording, scaffold/layout refactors, non-contract tooling adjustments.
+  - Hard-pause conflicts (must stop affected coding and wait for approval): DB schema, indexes, migrations, API contract shape, status code, error body, run status semantics, reason semantics, timing semantics, cancellation semantics.
+  - Soft-pause conflicts (can continue non-conflicting tasks): doc wording, scaffold or layout refactors, non-contract tooling adjustments.
 - For hard-pause conflicts, submit a short conflict note before coding continues in the affected scope:
-  - conflicting statements with file+line references
-  - expected impact/risk if unresolved
-  - option A/B and a recommended option
-- Apply scope-based authority when proposing options: `apps/server/prisma/schema.prisma` for DB shape; `IMPLEMENTATION_GUIDE.md` for behavior/API; then fallback to runnable scripts/config.
+  - conflicting statements with file and line references
+  - expected impact or risk if unresolved
+  - option A and B with a recommended option
+- Apply scope-based authority when proposing options: `apps/server/prisma/schema.prisma` for DB shape, `IMPLEMENTATION_GUIDE.md` for behavior and API, then fallback to runnable scripts or config.
 - Wait for explicit user approval before implementing conflict-dependent code and before updating this file.
 - After approval, implement the agreed resolution and update this file to restore consistency.
