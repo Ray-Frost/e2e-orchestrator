@@ -52,6 +52,7 @@ The tree below is intentionally selective. It highlights contributor-relevant ro
 
 - Backend is still mostly the NestJS starter skeleton (`main.ts`, `app.module.ts`) and does not yet implement planned business modules.
 - Frontend is still mostly the Vite React starter UI and does not yet implement planned pages.
+- Current operating model: a single human maintainer uses coding agents heavily for implementation and review assistance.
 - `IMPLEMENTATION_GUIDE.md` defines the target platform behavior that is expected to be implemented incrementally in this repo.
 - `docs/` now provides the navigation layer for detailed process docs and ADR records without turning this file into a full doc index.
 - Treat current source tree as a scaffold baseline plus implementation guide as the intended target capability set.
@@ -70,6 +71,9 @@ The tree below is intentionally selective. It highlights contributor-relevant ro
 
 - Keep new implementation files inside the existing roots in this map. Add a new root only with explicit approval.
 - Treat `AGENTS.md` as repository navigation, not as the implementation spec or a detailed `docs/**` index.
+- Optimize for a single-maintainer, agent-assisted workflow. Prefer simple, explicit, low-ceremony solutions over team-scaled patterns.
+- Do not add abstractions, ownership boundaries, review choreography, or extension points justified mainly by hypothetical future teammates or agent roles.
+- Preserve clarity and handoff-readiness through explicit code, small APIs, and focused docs, not through speculative architecture.
 - Use explicit scope, constraints, and maintenance tradeoffs for repository decisions. Do not use academic framing.
 - Keep runtime design within SQLite single-writer discipline. Avoid parallel write patterns for the same run pipeline.
 - Keep external `sut-demo` and `demo-test-lib` source outside this repository. Do not vendor external SUT or test-library source into the platform repo as part of normal implementation work.
