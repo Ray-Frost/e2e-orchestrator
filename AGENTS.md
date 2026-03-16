@@ -8,9 +8,9 @@ This document is a project map for contributors and coding agents working in thi
 - Use `docs/README.md` as the default entrypoint and canonical root index for repository documentation under `docs/`.
 - Use `IMPLEMENTATION_GUIDE.md` for detailed behavior, workflow, API contract intent, and implementation constraints.
 - Use `apps/server/prisma/schema.prisma` as the source of truth for database models, enums, relations, and indexes.
-- If this file conflicts with those two sources, do not silently self-resolve in code: pause implementation in the affected scope, report the conflict with file+line evidence and options, wait for user approval, then implement and update this map.
+- If this file conflicts with those two sources, use the conflict handling rule in `Priority of Truth`.
 - Read in this order when starting a task: topology -> capability map -> rules -> source-of-truth docs.
-- Treat this file as orientation, not as a replacement for implementation specs.
+- Use this file as orientation and repository navigation.
 
 ## Repository Topology (Current)
 
@@ -43,8 +43,8 @@ This document is a project map for contributors and coding agents working in thi
 - `apps/web` is the frontend workspace package (`name: web`).
 - `docs/README.md` is the root entrypoint and canonical index for documentation stored under `docs/`.
 - Root package scripts provide dev entrypoints and unified lint/format workflows for workspace packages.
-- Existing `dist/` folders are build outputs, not the primary source-edit target.
-- Existing `node_modules/` folders are dependency caches and should not be edited.
+- Existing `dist/` folders are build outputs.
+- Existing `node_modules/` folders are dependency caches.
 
 ## Current Implementation Status
 
@@ -63,7 +63,15 @@ This document is a project map for contributors and coding agents working in thi
 - Frontend pages and API consumption (`runs list`, `run detail`, `statistics`): `apps/web/src`
 - Database structure and indexes: `apps/server/prisma/schema.prisma`
 - Runtime artifact output root: `artifacts/` (repo root, created at runtime)
-- Rule: keep new implementation files inside these existing roots unless a new root is explicitly approved.
+
+## Constraints
+
+- Keep new implementation files inside the existing roots in this map. Add a new root only with explicit approval.
+- Treat `AGENTS.md` as repository navigation, not as the implementation spec or a detailed `docs/**` index.
+- Use explicit scope, constraints, and maintenance tradeoffs for repository decisions. Do not use academic framing.
+- Keep runtime design within SQLite single-writer discipline. Avoid parallel write patterns for the same run pipeline.
+- Keep external `sut-demo` and `demo-test-lib` source outside this repository. Do not vendor external SUT or test-library source into the platform repo as part of normal implementation work.
+- When source authorities conflict or behavior is undocumented, do not guess or silently self-resolve. Use the conflict handling rule in `Priority of Truth`.
 
 ## Critical Project Rules (Minimal Set)
 
@@ -71,23 +79,20 @@ This document is a project map for contributors and coding agents working in thi
 - API must expose resource identifier field name as `id` (number).
 - Numeric primary keys (`runs.id`, `suites.id`) are exposed directly as resource IDs.
 - Use `run_id` / `suite_id` consistently in diagnostics and `meta.json` when resource-specific naming is needed.
-- Do not justify repository decisions with academic framing; use explicit scope, constraints, and maintenance tradeoffs.
-- Follow SQLite single-writer discipline in runtime design: avoid parallel write patterns for the same run pipeline.
 - Run status, reason, and timing semantics must follow `IMPLEMENTATION_GUIDE.md` definitions.
 - Statistics must be derived from structured DB records, with `case_results` as the source for case-level aggregation.
 - For `logs` API implementation, finalize pending protocol details in `IMPLEMENTATION_GUIDE.md` section 13.8 before coding and tests.
-- `apps/server/prisma/schema.prisma` remains authoritative for model/index definitions; do not treat doc prose as stronger than schema.
-- Environment variables are managed per app boundary: `DATABASE_URL` belongs to `apps/server/.env`, and root `.env` is not the source for server Prisma commands.
+- Treat `apps/server/prisma/schema.prisma` as authoritative for model/index definitions.
+- Use `apps/server/.env` as the `DATABASE_URL` source for server Prisma commands.
 - Cancellation semantics and error-body constraints should follow the implementation guide contract.
 - For data-shape disagreements, reconcile code to schema before extending API responses.
 
 ## Cross-Repo Integration Boundaries
 
-- This platform repo does not host source code for `sut-demo` or `demo-test-lib`.
+- This platform repo covers platform code, runtime artifacts, and execution metadata.
 - Run execution is driven by configured `command` and `cwd` recorded by the platform.
 - SUT connectivity and readiness checks are represented by `sut_base_url` and `probe_url`.
 - Runtime artifacts are produced and managed from this platform repository side.
-- Do not vendor external test-library or SUT source into this repository as part of normal implementation work.
 - Cross-repo coupling should remain configuration-driven instead of code-copy-driven.
 
 ## Commands (Current Workspace)
@@ -148,7 +153,7 @@ CI/release workflows:
 - Start docs discovery from `docs/README.md`.
 - Use `docs/README.md` for the canonical root `docs/` structure, registered doc areas, and maintenance rules.
 - Treat `docs/design-docs/**` as the home for ADRs and architecture decision history.
-- Keep this file focused on repository navigation and edit boundaries; do not expand it into a detailed `docs/**` index.
+- Keep this file focused on repository navigation and edit boundaries. See `Constraints` for scope guardrails.
 
 ## Process Requirements
 
@@ -180,7 +185,7 @@ Treat as generated/runtime (not source of truth):
 
 Editing hygiene:
 
-- Keep edits focused on task-relevant files and avoid broad refactors in scaffold areas.
+- Keep edits focused on task-relevant files.
 - Prefer small, traceable diffs that preserve this map's current-vs-target framing.
 
 ## Priority of Truth
@@ -192,7 +197,7 @@ Editing hygiene:
    - `docs/README.md`: canonical root structure and registration rules for the `docs/` subtree.
    - `docs/process/**`: detailed contributor-process and quality-gate rules.
    - `docs/design-docs/**`: ADRs and accepted architecture decision history.
-   - These docs do not override the DB or runtime/API authorities listed above.
+   - These docs are governance and detail references under the scope-based authorities listed above.
 3. workspace and app package scripts/config for what is runnable now.
 4. this `AGENTS.md` for navigation and implementation location guidance.
 
@@ -208,4 +213,3 @@ Conflict handling rule:
 - Apply scope-based authority when proposing options: `apps/server/prisma/schema.prisma` for DB shape; `IMPLEMENTATION_GUIDE.md` for behavior/API; then fallback to runnable scripts/config.
 - Wait for explicit user approval before implementing conflict-dependent code and before updating this file.
 - After approval, implement the agreed resolution and update this file to restore consistency.
-- Do not resolve conflicts by guessing undocumented behavior.
