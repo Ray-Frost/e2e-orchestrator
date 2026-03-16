@@ -38,20 +38,18 @@ This document is the detailed source for repository quality-gate rules.
   - Local DB files live under `apps/server/.data/`.
   - Migration directory remains `apps/server/prisma/migrations/`.
 
-## Trigger Matrix
+## Trigger Rules
 
-| Change in feature PR                                         | Gate            |
-| ------------------------------------------------------------ | --------------- |
-| `apps/server/prisma/schema.prisma` comment/doc only modified | Reduced DB Gate |
-| `apps/server/prisma/schema.prisma` schema shape modified     | Full DB Gate    |
-| Any `apps/server/prisma/migrations/**` file modified         | Full DB Gate    |
-| New Prisma Client usage under `apps/server/src/**`           | Full DB Gate    |
-| Server DB scripts or `DATABASE_URL` convention changed       | Full DB Gate    |
-| Other changes with no DB impact                              | No DB Gate      |
+- If `apps/server/prisma/schema.prisma` is modified for comments or documentation only, gate = `Reduced DB Gate`.
+- If `apps/server/prisma/schema.prisma` is modified for schema shape, gate = `Full DB Gate`.
+- If any file under `apps/server/prisma/migrations/**` is modified, gate = `Full DB Gate`.
+- If new Prisma Client usage is introduced under `apps/server/src/**`, gate = `Full DB Gate`.
+- If server DB scripts or the `DATABASE_URL` convention changes, gate = `Full DB Gate`.
+- If changes have no DB impact, gate = `No DB Gate`.
 
 ## Execution Checklist
 
-1. Determine whether the change triggers the reduced DB Gate or full DB Gate by checking the trigger matrix above.
+1. Determine whether the change triggers the reduced DB Gate or full DB Gate by checking the trigger rules above.
 2. Run the command set for the applicable gate (`Reduced DB Gate` or `Full DB Gate`) defined above.
 3. If the Prisma schema shape changed (models, fields, relations, enums, defaults, or indexes), commit migration assets under `apps/server/prisma/migrations/`.
 4. Record command outcomes (pass/fail; include reason when failed) in the final handoff note.
