@@ -41,7 +41,7 @@ Create an ADR when at least one condition is true:
 2. Fill required metadata and sections.
 3. Include at least two realistic options and explicit migration/compatibility impacts.
 4. Set status according to review outcome.
-5. Update the ADR index table in this file.
+5. Update the ADR index in this file.
 
 ## Section Semantics
 
@@ -51,11 +51,9 @@ Create an ADR when at least one condition is true:
 
 ## ADR Index
 
-| ADR ID   | Title                                          | Status   | Date       | File                                                                                         |
-| -------- | ---------------------------------------------- | -------- | ---------- | -------------------------------------------------------------------------------------------- |
-| ADR-0001 | Prisma Schema and Migration Artifacts Location | Accepted | 2026-03-05 | [ADR-0001-prisma-schema-location.md](./ADR-0001-prisma-schema-location.md)                   |
-| ADR-0002 | ESLint Typed-Linting Boundaries in Monorepo    | Accepted | 2026-03-06 | [ADR-0002-eslint-typed-linting-boundaries.md](./ADR-0002-eslint-typed-linting-boundaries.md) |
-| ADR-0003 | Single Numeric Resource IDs                    | Accepted | 2026-03-16 | [ADR-0003-single-numeric-resource-ids.md](./ADR-0003-single-numeric-resource-ids.md)         |
+- `ADR-0001`: Prisma Schema and Migration Artifacts Location. Status: `Accepted`. Date: `2026-03-05`. File: [ADR-0001-prisma-schema-location.md](./ADR-0001-prisma-schema-location.md)
+- `ADR-0002`: ESLint Typed-Linting Boundaries in Monorepo. Status: `Accepted`. Date: `2026-03-06`. File: [ADR-0002-eslint-typed-linting-boundaries.md](./ADR-0002-eslint-typed-linting-boundaries.md)
+- `ADR-0003`: Single Numeric Resource IDs. Status: `Accepted`. Date: `2026-03-16`. File: [ADR-0003-single-numeric-resource-ids.md](./ADR-0003-single-numeric-resource-ids.md)
 
 ## Reference Reading
 
