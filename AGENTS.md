@@ -6,7 +6,8 @@ This document is a project map for contributors and coding agents working in thi
 
 - Use this file first to locate code and decide edit boundaries quickly.
 - Use `docs/README.md` as the default entrypoint and canonical root index for repository documentation under `docs/`.
-- Use `IMPLEMENTATION_GUIDE.md` for detailed runtime behavior, workflow, API contract intent, and implementation constraints.
+- Use `docs/specs/**` for feature-local planning assets once a slice has been decomposed out of `IMPLEMENTATION_GUIDE.md`. Within a feature directory, `spec.md` owns scope/behavior/acceptance, `plan.md` owns approach/impact/validation, and `tasks.md` is the execution breakdown that must stay consistent with the other two.
+- Use `IMPLEMENTATION_GUIDE.md` for platform-wide runtime behavior, workflow, API contract intent, and implementation constraints that have not yet been decomposed into `docs/specs/**`.
 - Use `apps/server/prisma/schema.prisma` as the source of truth for database models, enums, relations, and indexes.
 - If this file conflicts with those sources, use the conflict handling rule in `Priority of Truth`.
 - Read in this order when starting a task: topology -> capability map -> repository rules -> source-of-truth docs.
@@ -37,6 +38,9 @@ The tree below is intentionally selective. It highlights contributor-relevant ro
 │     ├─ package.json          # Frontend scripts and deps
 │     └─ vite.config.ts
 ├─ docs/                       # Repository documentation subtree (root index: docs/README.md)
+│  ├─ process/                 # Contributor workflow and quality-gate docs
+│  ├─ design-docs/             # ADRs and architecture history
+│  └─ specs/                   # Feature-level planning assets extracted from IMPLEMENTATION_GUIDE.md
 ├─ IMPLEMENTATION_GUIDE.md     # Implementation plan and constraints
 ├─ package.json                # Workspace-level scripts
 └─ pnpm-workspace.yaml         # Workspace package boundaries
@@ -54,7 +58,7 @@ The tree below is intentionally selective. It highlights contributor-relevant ro
 - Backend is still mostly the NestJS starter skeleton (`main.ts`, `app.module.ts`) and does not yet implement planned business modules.
 - Frontend is still mostly the Vite React starter UI and does not yet implement planned pages.
 - Current operating model: a single human maintainer uses coding agents heavily for implementation and review assistance.
-- `IMPLEMENTATION_GUIDE.md` defines the target platform behavior that is expected to be implemented incrementally in this repo.
+- `IMPLEMENTATION_GUIDE.md` defines the target platform behavior that is expected to be implemented incrementally in this repo and is being decomposed into `docs/specs/**` feature plans.
 - `docs/` provides the navigation layer for detailed process docs and ADR records without turning this file into a full doc index.
 - Runtime artifact folder `artifacts/` is part of planned behavior and may be created during implementation or runtime.
 - Status snapshot date: `2026-03-16` (refresh this section when major code or tooling baselines change).
@@ -142,6 +146,7 @@ CI and release workflows:
 
 - Start docs discovery from `docs/README.md`.
 - Use `docs/README.md` for the canonical root `docs/` structure, registered doc areas, and maintenance rules.
+- Treat `docs/specs/**` as the home for feature-local planning assets once a capability has been decomposed out of `IMPLEMENTATION_GUIDE.md`.
 - Treat `docs/design-docs/**` as the home for ADRs and architecture decision history.
 - Keep this file focused on repository navigation and edit boundaries. See `Repository Rules` for scope guardrails.
 
@@ -162,6 +167,7 @@ Edit preferred:
 - `apps/server/prisma/schema.prisma`
 - `IMPLEMENTATION_GUIDE.md` (only when intentionally updating plan text)
 - `docs/README.md` when updating the root docs navigation model
+- `docs/specs/**` when intentionally adding or revising feature-level planning assets
 - `docs/process/**` when intentionally updating process or quality-gate documentation
 - `docs/design-docs/**` when intentionally adding or revising ADR records and indexes
 - workspace config files related to toolchain behavior (`package.json`, eslint/ts/vite/nest configs)
@@ -183,7 +189,8 @@ Editing hygiene:
 
 1. Scope-based authority:
    - `apps/server/prisma/schema.prisma`: DB structure, enums, relations, indexes, and migration-facing data shape.
-   - `IMPLEMENTATION_GUIDE.md`: runtime behavior, API contracts, process semantics, and operational constraints.
+   - `docs/specs/**`: feature-local planning assets for capabilities that have been explicitly decomposed out of `IMPLEMENTATION_GUIDE.md`. Within one feature directory, `spec.md` owns scope/behavior/acceptance, `plan.md` owns implementation approach and validation strategy, and `tasks.md` operationalizes the work without overriding the other two.
+   - `IMPLEMENTATION_GUIDE.md`: platform-wide runtime behavior, API contracts, process semantics, and operational constraints that have not yet been decomposed into `docs/specs/**`.
 2. Documentation governance and detail docs:
    - `docs/README.md`: canonical root structure and registration rules for the `docs/` subtree.
    - `docs/process/**`: detailed contributor-process and quality-gate rules.
@@ -201,6 +208,6 @@ Conflict handling rule:
   - conflicting statements with file and line references
   - expected impact or risk if unresolved
   - option A and B with a recommended option
-- Apply scope-based authority when proposing options: `apps/server/prisma/schema.prisma` for DB shape, `IMPLEMENTATION_GUIDE.md` for behavior and API, then fallback to runnable scripts or config.
+- Apply scope-based authority when proposing options: `apps/server/prisma/schema.prisma` for DB shape, then `docs/specs/**` when the affected capability has been decomposed there, then `IMPLEMENTATION_GUIDE.md` for undecomposed behavior and API, then fallback to runnable scripts or config.
 - Wait for explicit user approval before implementing conflict-dependent code and before updating this file.
 - After approval, implement the agreed resolution and update this file to restore consistency.

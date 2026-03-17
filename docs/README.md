@@ -4,7 +4,7 @@ This file is the default entrypoint and canonical root index for repository docu
 
 ## Scope
 
-- `docs/` stores documentation navigation, detailed contributor process docs, and architecture decision records.
+- `docs/` stores navigation, feature plans, process docs, and ADRs.
 - Keep this file focused on the root `docs/` structure, registered areas, and maintenance rules.
 - Do not expand this file into a duplicate of implementation-specific documents elsewhere in the repository.
 
@@ -14,6 +14,8 @@ This file is the default entrypoint and canonical root index for repository docu
   Entry files: [`process/quality-gates.md`](./process/quality-gates.md), [`process/markdown-style.md`](./process/markdown-style.md), [`process/implementation-guide-decomposition.md`](./process/implementation-guide-decomposition.md)
 - `design-docs/`: Architecture Decision Records (ADRs) and architecture history.
   Entry files: [`design-docs/README.md`](./design-docs/README.md), [`design-docs/index.md`](./design-docs/index.md)
+- `specs/`: feature-level planning assets extracted from `IMPLEMENTATION_GUIDE.md`.
+  Entry file: [`specs/README.md`](./specs/README.md)
 
 ## Root Rules
 

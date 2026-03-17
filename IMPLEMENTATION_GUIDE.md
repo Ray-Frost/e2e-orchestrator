@@ -110,37 +110,20 @@
 
 ## 8. 产物归档与 meta.json
 
-### 8.1 路径规则（由 run_id 推导）
+该 feature 的规划已迁移至
+[`docs/specs/001-run-artifact-persistence/`](./docs/specs/001-run-artifact-persistence/)。
+后续实现 thread 默认使用该目录下的
+[`spec.md`](./docs/specs/001-run-artifact-persistence/spec.md)、
+[`plan.md`](./docs/specs/001-run-artifact-persistence/plan.md)、
+[`tasks.md`](./docs/specs/001-run-artifact-persistence/tasks.md) 作为直接输入。
 
-- 根目录：`artifacts/run-<run_id>/`
-- 文件/目录：
-  - `stdout.log`
-  - `stderr.log`
-  - `results.json`
-  - `playwright-report/`
-  - `meta.json`
-  - `test-results/`（可选）
-- 访问缺失语义：目标文件/目录不存在时，对应 API 返回 `404`；页面层提示“未生成/已被清理”。
+已迁移的范围仅限运行产物持久化与 `meta.json` 规则。本指南中仍保留与该主题相关、但尚未拆分的 artifact 访问与 report 合同，例如第 10 节的 run 详情 / report API，以及第 13.7 节中的缺失产物访问语义。
 
-### 8.2 meta.json 规则
+本节现在仅保留跨 feature 共享约束：
 
-- 包含 `meta_schema_version`（默认 1）
-- 不维护 artifacts 索引（所有产物路径由约定推导）
-- 最小建议字段：
-  - `identity.run { id }`
-  - `identity.suite { id, suite_name_snapshot }`
-  - `execution { command, cwd }`
-  - `config { sut_base_url, probe_url }`
-  - `result { status, reason, exit_code, timeout_minutes }`
-  - `timing { created_at, start_time, end_time, duration_ms }`
-  - `process { runner_pgid, started_at, platform_pid }`
-
-### 8.3 DB 与 meta 权威边界
-
-- DB 权威：身份关系、状态、原因、时间、统计字段
-- meta 权威：运行现场与环境快照
-- 冲突读法：以 DB 为准
-- 写入策略：`DB -> meta(best-effort)`；若 meta 写入失败，不回滚 DB，记录结构化告警日志。
+- 运行产物根目录仍位于仓库根 `artifacts/`
+- 产物路径继续按 `run_id` 约定推导，不维护独立 artifacts 索引
+- `meta.json` 与诊断链路继续遵循单一 `id` 语义；如需资源上下文，使用 `run_id` / `suite_id`
 
 ## 9. 数据库模型与索引（以 `apps/server/prisma/schema.prisma` 为准）
 
@@ -220,7 +203,7 @@
 2. 在触发条件满足的 feature PR 内落地 Prisma 基建与 migration，并以现有 `apps/server/prisma/schema.prisma` 为准执行。
 3. 实现 runs 创建与调度器（FIFO + 并发=1 + 状态流转）。
 4. 实现执行器（spawn、日志落盘、超时、取消、清理）。
-5. 实现产物路径推导与 meta.json 写入。
+5. 实现 run artifact persistence（固定目录推导 + `meta.json` 写入），详见 `docs/specs/001-run-artifact-persistence/tasks.md`。
 6. 在 `demo-test-lib` 引入 `test_lib_case_code`（辅助函数传参方式）并补齐现有用例。
 7. 实现 results 解析与批量入库、runs 摘要回写（`test_lib_case_code` 必填，缺失按 `parse_or_write_error` 处理）。
 8. 实现 statistics 聚合查询（按 `test_lib_case_code` 聚合；`last_failed_at` 并列时取最大 `run.id`）。
@@ -258,9 +241,7 @@
 
 ### 13.5 DB 与 meta 写入策略
 
-1. 写入顺序固定为 `DB -> meta(best-effort)`。
-2. 若 meta 写入失败，不回滚 DB，不改变 run 终态。
-3. 记录结构化告警日志（按资源类型使用 `run_id` / `suite_id`）。
+已迁移至 [`docs/specs/001-run-artifact-persistence/spec.md`](./docs/specs/001-run-artifact-persistence/spec.md) 的 `Failure Semantics` 段落；后续该 feature 的实现与 review 以 feature spec 为准。
 
 ### 13.6 reason 值归纳（当前实现）
 
