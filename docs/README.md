@@ -11,7 +11,7 @@ This file is the default entrypoint and canonical root index for repository docu
 ## Current Doc Areas
 
 - `process/`: contributor workflow, quality gates, handoff procedures, and Markdown writing rules.
-  Entry files: [`process/quality-gates.md`](./process/quality-gates.md), [`process/markdown-style.md`](./process/markdown-style.md)
+  Entry files: [`process/quality-gates.md`](./process/quality-gates.md), [`process/markdown-style.md`](./process/markdown-style.md), [`process/implementation-guide-decomposition.md`](./process/implementation-guide-decomposition.md)
 - `design-docs/`: Architecture Decision Records (ADRs) and architecture history.
   Entry files: [`design-docs/README.md`](./design-docs/README.md), [`design-docs/index.md`](./design-docs/index.md)
 
