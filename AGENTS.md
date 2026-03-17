@@ -153,6 +153,7 @@ CI and release workflows:
 ## Process Requirements
 
 - Follow the repository quality gates before handoff. Use `docs/process/quality-gates.md` for the required checks, exceptions, and DB-gate rules.
+- Follow `docs/process/code-style.md` for repository-wide local code-style defaults and naming conventions.
 - Follow `docs/process/markdown-style.md` for Markdown writing rules. Keep detailed writing guidance there, not in this file.
 
 ## Safe Editing Boundaries
