@@ -124,6 +124,7 @@ Backend workspace (`server`):
 ```bash
 pnpm --filter server start:dev
 pnpm --filter server build
+pnpm --filter server test
 pnpm --filter server format:check
 pnpm --filter server lint
 ```

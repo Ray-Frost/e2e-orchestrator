@@ -12,10 +12,10 @@ Companion docs: [`spec.md`](./spec.md), [`plan.md`](./plan.md)
 ## Ordered Tasks
 
 1. Create the artifact path helper and root-resolution logic in
-   `apps/server/src/runs/artifacts/`.
+   `apps/server/src/runs/artifact-persistence/`.
    Validation: unit test the `artifacts/run-<id>/` layout and child paths.
 2. Implement the `meta.json` snapshot builder in
-   `apps/server/src/runs/artifacts/`.
+   `apps/server/src/runs/artifact-persistence/`.
    Validation: unit test pre-spawn and terminal snapshots, including `null` for
    values that are not known yet.
 3. Implement the filesystem writer service for run directories and

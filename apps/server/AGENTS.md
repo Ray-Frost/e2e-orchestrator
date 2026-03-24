@@ -30,6 +30,7 @@ Run these from the repository root unless a package context is explicit.
 ```bash
 pnpm --filter server start:dev
 pnpm --filter server build
+pnpm --filter server test
 pnpm --filter server lint
 pnpm --filter server format:check
 pnpm --filter server db:validate

@@ -34,10 +34,10 @@ Companion docs: [`spec.md`](./spec.md), [`tasks.md`](./tasks.md)
 
 - Future runtime area: `apps/server/src/runs/**`
 - Proposed new files:
-  - `apps/server/src/runs/artifacts/artifact-paths.ts`
-  - `apps/server/src/runs/artifacts/meta-snapshot.ts`
-  - `apps/server/src/runs/artifacts/run-artifacts.service.ts`
-  - `apps/server/src/runs/artifacts/*.spec.ts`
+  - `apps/server/src/runs/artifact-persistence/artifact-paths.ts`
+  - `apps/server/src/runs/artifact-persistence/meta-snapshot.ts`
+  - `apps/server/src/runs/artifact-persistence/run-artifacts.service.ts`
+  - `apps/server/src/runs/artifact-persistence/*.spec.ts`
 - Likely integration points once the run lifecycle module exists:
   - run execution service
   - terminalization or result-finalization logic

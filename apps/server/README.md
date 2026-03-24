@@ -22,6 +22,7 @@ Run these from the repository root unless you intentionally switch into the pack
 ```bash
 pnpm --filter server start:dev
 pnpm --filter server build
+pnpm --filter server test
 pnpm --filter server lint
 pnpm --filter server format:check
 pnpm --filter server db:check
