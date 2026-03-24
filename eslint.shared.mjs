@@ -12,6 +12,7 @@ export const sharedTypedRules = [
 ];
 
 export const sharedTypeScriptStyleRules = {
+  eqeqeq: ['error', 'always'],
   'no-use-before-define': 'off',
   '@typescript-eslint/no-use-before-define': [
     'error',
