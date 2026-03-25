@@ -60,7 +60,7 @@ The tree below is intentionally selective. It highlights contributor-relevant ro
 - Current operating model: a single human maintainer uses coding agents heavily for implementation and review assistance.
 - `IMPLEMENTATION_GUIDE.md` defines the target platform behavior that is expected to be implemented incrementally in this repo and is being decomposed into `docs/specs/**` feature plans.
 - `docs/` provides the navigation layer for detailed process docs and ADR records without turning this file into a full doc index.
-- Runtime artifact folder `artifacts/` is part of planned behavior and may be created during implementation or runtime.
+- Runtime artifact folder `apps/server/artifacts/` is part of planned behavior and may be created during implementation or runtime.
 - Status snapshot date: `2026-03-16` (refresh this section when major code or tooling baselines change).
 
 ## Capability-to-Location Map (No Speculative Paths)
@@ -68,7 +68,7 @@ The tree below is intentionally selective. It highlights contributor-relevant ro
 - Backend runtime and API capabilities (`suites`, `runs`, `cancellations`, `logs`, `report`, `cases`, `statistics`, scheduler, executor, recovery): `apps/server/src`
 - Frontend pages and API consumption (`runs list`, `run detail`, `statistics`): `apps/web/src`
 - Database structure and indexes: `apps/server/prisma/schema.prisma`
-- Runtime artifact output root: `artifacts/` (repo root, created at runtime)
+- Runtime artifact output root: `apps/server/artifacts/` (backend package, created at runtime)
 
 ## Repository Rules
 

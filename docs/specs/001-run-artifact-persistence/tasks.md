@@ -13,7 +13,8 @@ Companion docs: [`spec.md`](./spec.md), [`plan.md`](./plan.md)
 
 1. Create the artifact path helper and root-resolution logic in
    `apps/server/src/runs/artifact-persistence/`.
-   Validation: unit test the `artifacts/run-<id>/` layout and child paths.
+   Validation: unit test the `apps/server/artifacts/run-<id>/` layout and child
+   paths.
 2. Implement the `meta.json` snapshot builder in
    `apps/server/src/runs/artifact-persistence/`.
    Validation: unit test pre-spawn and terminal snapshots, including `null` for

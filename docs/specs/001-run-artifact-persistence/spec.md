@@ -26,8 +26,9 @@ Companion docs: [`plan.md`](./plan.md), [`tasks.md`](./tasks.md)
 
 ## Scope
 
-- Repo-root artifact output under `artifacts/`, following the current
-  `IMPLEMENTATION_GUIDE.md` requirement for platform-side runtime artifacts.
+- Backend-local artifact output under `apps/server/artifacts/`, following the
+  current `IMPLEMENTATION_GUIDE.md` requirement for backend-owned runtime
+  artifacts.
 - Deterministic per-run directory derivation from `run_id`.
 - Required and optional artifact names inside a run directory.
 - `meta.json` schema version 1 and write/update rules.
@@ -48,7 +49,7 @@ Companion docs: [`plan.md`](./plan.md), [`tasks.md`](./tasks.md)
 
 ## Inherited Constraints
 
-- Use the repository root `artifacts/` directory.
+- Use the backend-local `apps/server/artifacts/` directory.
 - Use numeric `run_id` and `suite_id` consistently across filesystem snapshots
   and diagnostics.
 - Keep `snake_case` for JSON keys.
@@ -63,7 +64,8 @@ Companion docs: [`plan.md`](./plan.md), [`tasks.md`](./tasks.md)
 
 ### Artifact Directory
 
-- Each run uses one deterministic directory: `artifacts/run-<run_id>/`.
+- Each run uses one deterministic directory:
+  `apps/server/artifacts/run-<run_id>/`.
 - The directory is derived from `run_id` only. Do not store a separate artifact
   index in the database or in another manifest file.
 - The run directory may be created lazily when the run is about to start
@@ -136,7 +138,8 @@ Companion docs: [`plan.md`](./plan.md), [`tasks.md`](./tasks.md)
 ## Acceptance Criteria
 
 - A run that reaches `running` or any terminal state after spawning a runner has
-  a deterministic artifact directory under `artifacts/run-<id>/`.
+  a deterministic artifact directory under
+  `apps/server/artifacts/run-<id>/`.
 - The directory contains `stdout.log`, `stderr.log`, and `meta.json` when a
   runner process was spawned.
 - `meta.json` uses schema version `1` and the expected top-level sections.

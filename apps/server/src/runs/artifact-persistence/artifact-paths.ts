@@ -2,7 +2,7 @@ import path from 'node:path';
 
 export const ARTIFACTS_ROOT_PATH = path.resolve(
   __dirname,
-  '../../../../../artifacts',
+  '../../../artifacts',
 );
 
 export interface RunArtifactPaths {

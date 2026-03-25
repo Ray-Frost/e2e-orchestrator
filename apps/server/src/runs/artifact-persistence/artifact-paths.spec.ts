@@ -3,15 +3,12 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import test from 'node:test';
 import path from 'node:path';
-import {
-  ARTIFACTS_ROOT_PATH,
-  resolveRunArtifactPaths,
-} from './artifact-paths';
+import { ARTIFACTS_ROOT_PATH, resolveRunArtifactPaths } from './artifact-paths';
 
-void test('ARTIFACTS_ROOT_PATH derives the repo-root artifacts directory', () => {
+void test('ARTIFACTS_ROOT_PATH derives the backend-local artifacts directory', () => {
   assert.equal(
     ARTIFACTS_ROOT_PATH,
-    path.resolve(__dirname, '../../../../../artifacts'),
+    path.resolve(__dirname, '../../../artifacts'),
   );
 });
 
@@ -26,7 +23,10 @@ void test('resolveRunArtifactPaths does not depend on process.cwd()', async (tes
 
   process.chdir(sandboxRoot);
 
-  assert.equal(resolveRunArtifactPaths(42).runRoot, path.join(ARTIFACTS_ROOT_PATH, 'run-42'));
+  assert.equal(
+    resolveRunArtifactPaths(42).runRoot,
+    path.join(ARTIFACTS_ROOT_PATH, 'run-42'),
+  );
 });
 
 void test('resolveRunArtifactPaths derives deterministic run paths', () => {

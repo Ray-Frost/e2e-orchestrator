@@ -115,7 +115,9 @@ export class RunArtifactsService {
     }
   }
 
-  private async ensureRequiredLogTargets(paths: RunArtifactPaths): Promise<void> {
+  private async ensureRequiredLogTargets(
+    paths: RunArtifactPaths,
+  ): Promise<void> {
     const appendResults = await Promise.allSettled([
       this.ensureAppendFileTarget(paths.stdoutLog),
       this.ensureAppendFileTarget(paths.stderrLog),

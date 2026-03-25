@@ -22,7 +22,7 @@
 - platform 不托管 `sut-demo` 与 `demo-test-lib` 源码，通过配置接入外部仓库。
 - run 执行时的命令与工作目录（`command` + `cwd`）由 platform 记录并驱动。
 - platform 通过 `sut_base_url` + `probe_url` 与 SUT 联通。
-- 运行产物统一落在 platform 侧 `artifacts/` 目录。
+- 运行产物统一落在 backend 侧 `apps/server/artifacts/` 目录。
 
 ## 3. 非目标（明确不做）
 
@@ -121,7 +121,7 @@
 
 本节现在仅保留跨 feature 共享约束：
 
-- 运行产物根目录仍位于仓库根 `artifacts/`
+- 运行产物根目录位于 `apps/server/artifacts/`
 - 产物路径继续按 `run_id` 约定推导，不维护独立 artifacts 索引
 - `meta.json` 与诊断链路继续遵循单一 `id` 语义；如需资源上下文，使用 `run_id` / `suite_id`
 

@@ -60,9 +60,9 @@ Companion docs: [`spec.md`](./spec.md), [`tasks.md`](./tasks.md)
 
 ## Artifact or Runtime Impact
 
-- Runtime creates repo-root `artifacts/` on demand. This plan is inheriting the
-  current `IMPLEMENTATION_GUIDE.md` requirement that platform-side runtime
-  artifacts live in the repository root, not re-deciding that location here.
+- Runtime creates `apps/server/artifacts/` on demand. This plan is inheriting
+  the current `IMPLEMENTATION_GUIDE.md` requirement that backend runtime
+  artifacts live inside the server package, not re-deciding that location here.
 - Each run directory is isolated under `run-<id>`.
 - The executor points stdout and stderr file handles at deterministic paths
   resolved by the artifact service.
