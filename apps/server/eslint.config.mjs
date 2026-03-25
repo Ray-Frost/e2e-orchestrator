@@ -3,6 +3,7 @@ import globals from 'globals';
 import {
   createConfigRootDefaults,
   createUntypedToolingConfig,
+  sharedTypeScriptStyleRules,
   sharedTypedRules,
 } from '../../eslint.shared.mjs';
 
@@ -26,6 +27,7 @@ export default defineConfig(
     },
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
+      ...sharedTypeScriptStyleRules,
     },
   },
   createUntypedToolingConfig({

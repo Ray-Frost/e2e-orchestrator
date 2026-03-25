@@ -11,6 +11,30 @@ export const sharedTypedRules = [
   eslintConfigPrettier,
 ];
 
+export const sharedTypeScriptStyleRules = {
+  eqeqeq: ['error', 'always'],
+  'no-use-before-define': 'off',
+  '@typescript-eslint/no-use-before-define': [
+    'error',
+    {
+      functions: true,
+      classes: true,
+      variables: true,
+      typedefs: false,
+      ignoreTypeReferences: true,
+    },
+  ],
+  '@typescript-eslint/naming-convention': [
+    'error',
+    {
+      selector: ['variable', 'parameter'],
+      types: ['boolean'],
+      format: ['StrictPascalCase'],
+      prefix: ['is', 'has', 'can', 'should'],
+    },
+  ],
+};
+
 export function createConfigRootDefaults(tsconfigRootDir) {
   return {
     ignores: baseIgnores,

@@ -11,7 +11,8 @@ This document defines backend-local working rules for the server package.
 ## Backend Authorities
 
 - `apps/server/prisma/schema.prisma`: source of truth for database models, enums, relations, indexes, and migration-facing data shape.
-- `IMPLEMENTATION_GUIDE.md`: source of truth for runtime behavior, API contracts, run semantics, and operational constraints.
+- `docs/specs/**`: source of feature-local planning for decomposed server capabilities within their declared scope. Inside one feature directory, `spec.md` owns scope/behavior/acceptance, `plan.md` owns implementation approach and validation, and `tasks.md` is the executable breakdown that must stay aligned with the other two.
+- `IMPLEMENTATION_GUIDE.md`: source of truth for runtime behavior, API contracts, run semantics, and operational constraints that have not yet been decomposed into `docs/specs/**`.
 - `apps/server/.env`: source of `DATABASE_URL` for server-side Prisma commands.
 - `apps/server/package.json`: source of runnable backend package scripts.
 
@@ -29,6 +30,7 @@ Run these from the repository root unless a package context is explicit.
 ```bash
 pnpm --filter server start:dev
 pnpm --filter server build
+pnpm --filter server test
 pnpm --filter server lint
 pnpm --filter server format:check
 pnpm --filter server db:validate
@@ -48,6 +50,7 @@ pnpm --filter server db:migrate:deploy
 - Use `snake_case` for API fields, database fields, and JSON fields.
 - Expose the public resource identifier field as `id` and keep it typed as a number.
 - Use `run_id` and `suite_id` in diagnostics and `meta.json` when resource-specific naming is needed.
+- When a server capability has a registered feature spec under `docs/specs/**`, implement against that scoped spec first and use `IMPLEMENTATION_GUIDE.md` for undecomposed or cross-feature rules.
 - Follow `IMPLEMENTATION_GUIDE.md` for run status, reason, and timing semantics.
 - Derive statistics from structured DB records. `case_results` is the source for case-level aggregation.
 - Keep cancellation semantics and error-body constraints aligned with `IMPLEMENTATION_GUIDE.md`.

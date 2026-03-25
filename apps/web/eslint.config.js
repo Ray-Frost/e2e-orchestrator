@@ -5,6 +5,7 @@ import globals from 'globals';
 import {
   createConfigRootDefaults,
   createUntypedToolingConfig,
+  sharedTypeScriptStyleRules,
   sharedTypedRules,
 } from '../../eslint.shared.mjs';
 
@@ -39,6 +40,13 @@ export default defineConfig(
         tsconfigRootDir: import.meta.dirname,
       },
       sourceType: 'module',
+    },
+  },
+  {
+    basePath: import.meta.dirname,
+    files: ['src/**/*.{ts,tsx}', 'vite.config.ts'],
+    rules: {
+      ...sharedTypeScriptStyleRules,
     },
   },
   reactHooks.configs.flat.recommended,
