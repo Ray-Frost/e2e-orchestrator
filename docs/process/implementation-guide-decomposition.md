@@ -199,6 +199,22 @@ A feature spec is ready for coding-agent use only when it answers these question
 
 If key behavior is still unresolved, do not treat the feature as ready for implementation.
 
+## Spec Writing Guardrails
+
+Use these rules to keep `spec.md` feature-facing instead of migration-facing.
+
+- `spec.md` should describe the feature itself, not the act of extracting or
+  rewriting documentation.
+- `Purpose` should explain what the feature covers or locks, not why the doc
+  was created.
+- `Why This Feature Exists Now` should explain product, operator, or runtime
+  value, not guide-maintenance or decomposition reasons.
+- Do not put extraction history, "coding thread" guidance, or "without
+  rereading the guide" wording in `spec.md`.
+- Put migration notes in process docs, the docs index, commit messages, or PR
+  descriptions instead.
+- Put execution and handoff wording in `tasks.md`, not in the spec body.
+
 ## Suggested Feature Spec Structure
 
 ### `spec.md`
