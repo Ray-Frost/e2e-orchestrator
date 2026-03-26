@@ -4,17 +4,10 @@ Companion docs: [`plan.md`](./plan.md), [`tasks.md`](./tasks.md)
 
 ## Purpose
 
-- Define the run artifact persistence slice extracted from
-  `IMPLEMENTATION_GUIDE.md`.
-- Give future coding threads a bounded implementation target for filesystem
-  artifact layout and `meta.json` persistence.
-- Keep debugging and post-run inspection possible without re-reading the macro
-  guide.
-
-## Source Extraction
-
-- Extracted from `IMPLEMENTATION_GUIDE.md` section 8, implementation step 12.5,
-  and decision section 13.5.
+- Define the scope and behavior of the run artifact persistence feature.
+- Lock the filesystem artifact layout and `meta.json` persistence behavior for
+  this slice.
+- Lock the authority rules and runtime expectations needed for implementation.
 
 ## Why This Feature Exists Now
 
