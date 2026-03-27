@@ -1,42 +1,128 @@
 #root {
-  max-width: 1280px;
+  min-height: 100vh;
+}
+
+.app-shell {
+  max-width: 1120px;
   margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  padding: 3rem 1.5rem 4rem;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.page-header {
+  margin-bottom: 1.5rem;
+  animation: rise-in 220ms ease-out;
 }
 
-@keyframes logo-spin {
+.page-eyebrow {
+  margin: 0 0 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-color);
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: clamp(2.4rem, 5vw, 4.2rem);
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+}
+
+.page-summary {
+  max-width: 48rem;
+  margin: 0.9rem 0 0;
+  color: var(--muted-text-color);
+  font-size: 1rem;
+}
+
+.status-panel,
+.failures-table-panel {
+  border: 1px solid var(--panel-border-color);
+  border-radius: 1.4rem;
+  background: rgba(255, 252, 246, 0.88);
+  box-shadow: 0 24px 70px rgba(58, 53, 38, 0.1);
+  backdrop-filter: blur(12px);
+}
+
+.status-panel {
+  padding: 1.25rem 1.4rem;
+  animation: rise-in 220ms ease-out;
+}
+
+.status-panel p {
+  margin: 0;
+}
+
+.status-panel-error {
+  border-color: rgba(156, 62, 43, 0.25);
+  color: #8f2e1f;
+  background: rgba(255, 242, 238, 0.95);
+}
+
+.status-panel a {
+  display: inline-flex;
+  margin-top: 1rem;
+}
+
+.table-scroll-frame {
+  overflow-x: auto;
+}
+
+.failures-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.failures-table th,
+.failures-table td {
+  padding: 1rem 1.15rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.failures-table th {
+  border-bottom: 1px solid rgba(86, 89, 97, 0.16);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-text-color);
+}
+
+.failures-table tbody tr + tr td {
+  border-top: 1px solid rgba(86, 89, 97, 0.12);
+}
+
+.case-code-cell code {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1f4e63;
+}
+
+.run-link {
+  font-weight: 700;
+}
+
+@keyframes rise-in {
   from {
-    transform: rotate(0deg);
+    opacity: 0;
+    transform: translateY(10px);
   }
+
   to {
-    transform: rotate(360deg);
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+@media (max-width: 720px) {
+  .app-shell {
+    padding: 2rem 1rem 3rem;
   }
-}
 
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
+  .failures-table th,
+  .failures-table td {
+    padding: 0.9rem 0.8rem;
+  }
 }

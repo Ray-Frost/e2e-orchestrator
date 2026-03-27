@@ -8,6 +8,10 @@ Companion docs: [`spec.md`](./spec.md), [`tasks.md`](./tasks.md)
   focused statistics controller/service path.
 - Read the relevant `case_results` rows in one deterministic ordered query, then
   aggregate in application code instead of introducing a repository layer.
+- Keep the backend response recency-first and make tie-breakers explicit rather
+  than relying on database row order.
+- Treat the `test_lib_case_code ASC` tie-breaker as locale-independent plain
+  string comparison, not locale-aware collation.
 - Keep the frontend routing explicit with `BrowserRouter`, `Routes`, and
   `Route`, and use a simple redirect from `/` to `/statistics/failures`.
 - Use a Vite `/api` proxy so the frontend can call relative `/api/...`
@@ -40,7 +44,7 @@ Companion docs: [`spec.md`](./spec.md), [`tasks.md`](./tasks.md)
 - Add the `/statistics/failures` route.
 - Add the `/` redirect.
 - Add a placeholder `/runs/:id` route.
-- Keep all API calls relative so the Vite proxy handles dev traffic.
+- Keep all API calls relative so the Vite proxy handles dev and preview traffic.
 
 ## Test Strategy
 
@@ -50,7 +54,11 @@ Companion docs: [`spec.md`](./spec.md), [`tasks.md`](./tasks.md)
   - multiple case code groups,
   - tie resolution by larger `run_id`,
   - latest-row metadata consistency,
-  - response sorting by `last_failed_at DESC`, then `last_run_id DESC`.
+  - raw-row ties within one case code resolved by larger `id`,
+  - plain-string `test_lib_case_code` tie resolution for punctuation-bearing
+    codes,
+  - response sorting by `last_failed_at DESC`, then `last_run_id DESC`, then
+    `test_lib_case_code ASC`.
 - Frontend Vitest plus React Testing Library should cover:
   - loading state,
   - empty state,

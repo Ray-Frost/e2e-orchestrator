@@ -1,34 +1,236 @@
-import { useState } from 'react';
-import reactLogo from './assets/react.svg';
-import viteLogo from '/vite.svg';
+import { startTransition, useEffect, useState } from 'react';
+import {
+  BrowserRouter,
+  Link,
+  Navigate,
+  Route,
+  Routes,
+  useParams,
+} from 'react-router-dom';
 import './App.css';
 
-function App() {
-  const [count, setCount] = useState(0);
+const failureStatisticsRoute = '/statistics/failures';
+const failureStatisticsApiPath = '/api/statistics/failures';
+const defaultFailureStatisticsErrorMessage =
+  'Failed to load failure statistics.';
+
+type FailureStatisticsRow = {
+  test_lib_case_code: string;
+  case_title: string;
+  fail_count: number;
+  last_failed_at: string;
+  last_run_id: number;
+};
+
+type FailureStatisticsPageState =
+  | {
+      status: 'loading';
+    }
+  | {
+      status: 'error';
+      message: string;
+    }
+  | {
+      status: 'ready';
+      rows: FailureStatisticsRow[];
+    };
+
+function formatFailureTimestamp(timestamp: string) {
+  const parsedDate = new Date(timestamp);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return timestamp;
+  }
+
+  return parsedDate.toISOString().replace('T', ' ').replace('.000Z', ' UTC');
+}
+
+async function readFailureStatisticsErrorMessage(response: Response) {
+  try {
+    const responseBody = (await response.json()) as unknown;
+
+    if (
+      typeof responseBody === 'object' &&
+      responseBody !== null &&
+      'error' in responseBody &&
+      typeof responseBody.error === 'object' &&
+      responseBody.error !== null &&
+      'message' in responseBody.error &&
+      typeof responseBody.error.message === 'string'
+    ) {
+      return responseBody.error.message;
+    }
+  } catch {
+    return defaultFailureStatisticsErrorMessage;
+  }
+
+  return defaultFailureStatisticsErrorMessage;
+}
+
+function FailureStatisticsPage() {
+  const [pageState, setPageState] = useState<FailureStatisticsPageState>({
+    status: 'loading',
+  });
+
+  useEffect(() => {
+    const abortController = new AbortController();
+
+    async function loadFailureStatistics() {
+      try {
+        const response = await fetch(failureStatisticsApiPath, {
+          signal: abortController.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(await readFailureStatisticsErrorMessage(response));
+        }
+
+        const responseBody = (await response.json()) as FailureStatisticsRow[];
+
+        startTransition(() => {
+          setPageState({
+            status: 'ready',
+            rows: responseBody,
+          });
+        });
+      } catch (error) {
+        if (abortController.signal.aborted) {
+          return;
+        }
+
+        const message =
+          error instanceof Error
+            ? error.message
+            : defaultFailureStatisticsErrorMessage;
+
+        startTransition(() => {
+          setPageState({
+            status: 'error',
+            message,
+          });
+        });
+      }
+    }
+
+    void loadFailureStatistics();
+
+    return () => {
+      abortController.abort();
+    };
+  }, []);
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
+    <main className="app-shell">
+      <header className="page-header">
+        <p className="page-eyebrow">Statistics</p>
+        <h1>Failure statistics</h1>
+        <p className="page-summary">
+          Latest failed case groups across recorded runs, ordered by the most
+          recent failure.
         </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+      </header>
+      {pageState.status === 'loading' ? (
+        <section className="status-panel">
+          <p>Loading failure statistics...</p>
+        </section>
+      ) : null}
+      {pageState.status === 'error' ? (
+        <section className="status-panel status-panel-error">
+          <p>{pageState.message}</p>
+        </section>
+      ) : null}
+      {pageState.status === 'ready' && pageState.rows.length === 0 ? (
+        <section className="status-panel">
+          <p>No failed test cases yet.</p>
+        </section>
+      ) : null}
+      {pageState.status === 'ready' && pageState.rows.length > 0 ? (
+        <section className="failures-table-panel">
+          <div className="table-scroll-frame">
+            <table className="failures-table">
+              <thead>
+                <tr>
+                  <th scope="col">Case code</th>
+                  <th scope="col">Title</th>
+                  <th scope="col">Failures</th>
+                  <th scope="col">Last failed at</th>
+                  <th scope="col">Last run</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pageState.rows.map((failureRow) => (
+                  <tr key={failureRow.test_lib_case_code}>
+                    <td className="case-code-cell">
+                      <code>{failureRow.test_lib_case_code}</code>
+                    </td>
+                    <td>{failureRow.case_title}</td>
+                    <td>{failureRow.fail_count}</td>
+                    <td>
+                      <time dateTime={failureRow.last_failed_at}>
+                        {formatFailureTimestamp(failureRow.last_failed_at)}
+                      </time>
+                    </td>
+                    <td>
+                      <Link
+                        className="run-link"
+                        to={`/runs/${failureRow.last_run_id}`}
+                      >
+                        {failureRow.last_run_id}
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
+    </main>
+  );
+}
+
+function RunPlaceholderPage() {
+  const routeParams = useParams();
+  const runId = routeParams.id ?? 'unknown';
+
+  return (
+    <main className="app-shell">
+      <header className="page-header">
+        <p className="page-eyebrow">Runs</p>
+        <h1>{`Run ${runId}`}</h1>
+        <p className="page-summary">
+          Placeholder route for future run details.
+        </p>
+      </header>
+      <section className="status-panel">
+        <p>Run details are not implemented yet.</p>
+        <Link className="run-link" to={failureStatisticsRoute}>
+          Back to failure statistics
+        </Link>
+      </section>
+    </main>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route
+          path="/"
+          element={<Navigate replace to={failureStatisticsRoute} />}
+        />
+        <Route
+          path={failureStatisticsRoute}
+          element={<FailureStatisticsPage />}
+        />
+        <Route path="/runs/:id" element={<RunPlaceholderPage />} />
+        <Route
+          path="*"
+          element={<Navigate replace to={failureStatisticsRoute} />}
+        />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

@@ -50,7 +50,7 @@ Companion docs: [`plan.md`](./plan.md), [`tasks.md`](./tasks.md)
 
 - Use the global Nest `/api` prefix.
 - Use relative `/api/...` requests from the frontend.
-- Use a Vite `/api` proxy to the server dev port.
+- Use a Vite `/api` proxy to the server port for local dev and preview.
 - Use `react-router` with `BrowserRouter`, `Routes`, and `Route`.
 - Add only a minimal shared Prisma service on the backend.
 - Do aggregation in application code after a deterministic ordered read.
@@ -58,6 +58,9 @@ Companion docs: [`plan.md`](./plan.md), [`tasks.md`](./tasks.md)
 - Keep `test_lib_case_code` as the grouping key.
 - Keep `case_title`, `last_failed_at`, and `last_run_id` sourced from the same
   latest tie-broken failed row in each group.
+- Keep the response recency-first; use `test_lib_case_code` only as the
+  tertiary response tie-breaker when `last_failed_at` and `last_run_id` tie.
+  Treat `test_lib_case_code ASC` as locale-independent plain string order.
 
 ## Backend Behavior
 
@@ -69,19 +72,20 @@ Companion docs: [`plan.md`](./plan.md), [`tasks.md`](./tasks.md)
   - `last_failed_at`
   - `last_run_id`
 - Source rows come from failed `case_results`.
-- Read ordering is deterministic: `failed_at DESC, run_id DESC`.
+- Read ordering is deterministic: `failed_at DESC, run_id DESC, id DESC`.
 - Grouping key is `test_lib_case_code`.
 - `fail_count` is the number of failed rows in the group.
 - `case_title`, `last_failed_at`, and `last_run_id` come from the same latest
-  tie-broken failed row.
+  tie-broken failed row selected by that read order.
 - Response order is deterministic and surfaces the most recent failed groups
-  first: `last_failed_at DESC`, then `last_run_id DESC`.
+  first: `last_failed_at DESC`, then `last_run_id DESC`, then
+  `test_lib_case_code ASC` using locale-independent plain string comparison.
 
 ## Frontend Behavior
 
 - The app opens at `/`, then redirects to `/statistics/failures`.
 - The failures page loads statistics from the backend using the local `/api`
-  proxy.
+  proxy in local dev and preview.
 - The page shows loading, empty, error, and populated states.
 - Each populated row links `last_run_id` to `/runs/:id`.
 - The `/runs/:id` route only needs to exist as a placeholder in this slice.
@@ -93,9 +97,10 @@ Companion docs: [`plan.md`](./plan.md), [`tasks.md`](./tasks.md)
 - The backend aggregates failed `case_results` deterministically by
   `test_lib_case_code`.
 - Rows from the same code use the latest tie-broken failed row for title and
-  timestamps.
+  timestamps, with raw-row ties resolved by `id DESC`.
 - The response order is newest failure group first, using `last_failed_at DESC`
-  and `last_run_id DESC` as the locked sort.
+  then `last_run_id DESC`, then `test_lib_case_code ASC` as the locked plain
+  string sort.
 - The frontend redirects `/` to `/statistics/failures`.
 - The frontend renders `/statistics/failures` with the expected loading,
   empty, error, and populated states.

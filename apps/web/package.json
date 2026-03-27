@@ -9,20 +9,27 @@
     "format": "pnpm run format:write",
     "format:check": "pnpm exec prettier --check \"src/**/*.{ts,tsx,js,mjs,cjs,json,css}\" \"*.{ts,tsx,js,mjs,cjs,json,css}\"",
     "format:write": "pnpm exec prettier --write \"src/**/*.{ts,tsx,js,mjs,cjs,json,css}\" \"*.{ts,tsx,js,mjs,cjs,json,css}\"",
-    "lint": "pnpm exec eslint --config eslint.config.js \"src/**/*.{ts,tsx}\" \"vite.config.ts\" --max-warnings 0 --no-warn-ignored",
-    "lint:fix": "pnpm exec eslint --config eslint.config.js \"src/**/*.{ts,tsx}\" \"vite.config.ts\" --fix --max-warnings 0 --no-warn-ignored",
+    "lint": "pnpm exec eslint --config eslint.config.js \"src/**/*.{ts,tsx}\" \"vite.config.ts\" \"vitest.config.ts\" --max-warnings 0 --no-warn-ignored",
+    "lint:fix": "pnpm exec eslint --config eslint.config.js \"src/**/*.{ts,tsx}\" \"vite.config.ts\" \"vitest.config.ts\" --fix --max-warnings 0 --no-warn-ignored",
+    "test": "pnpm exec vitest run --config vitest.config.ts",
     "preview": "vite preview"
   },
   "dependencies": {
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.13.2"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
+    "jsdom": "^29.0.1",
     "typescript": "~5.9.3",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "vitest": "^4.1.1"
   }
 }
