@@ -6,7 +6,7 @@ import viteConfig, {
   resolveBackendProxyTarget,
 } from '../vite.config.ts';
 
-void test('resolveBackendProxyTarget falls back to port 3000 when the registry file is missing', () => {
+test('resolveBackendProxyTarget falls back to port 3000 when the registry file is missing', () => {
   const resolvedTarget = resolveBackendProxyTarget({
     readRegistryFile: () => {
       const missingFileError = new Error('Registry file not found') as Error & {
@@ -20,7 +20,7 @@ void test('resolveBackendProxyTarget falls back to port 3000 when the registry f
   expect(resolvedTarget).toBe('http://localhost:3000');
 });
 
-void test('resolveBackendProxyTarget uses the recorded port when the registry is valid and the pid is live', () => {
+test('resolveBackendProxyTarget uses the recorded port when the registry is valid and the pid is live', () => {
   const resolvedTarget = resolveBackendProxyTarget({
     isProcessLive: () => true,
     readRegistryFile: () =>
@@ -34,7 +34,7 @@ void test('resolveBackendProxyTarget uses the recorded port when the registry is
   expect(resolvedTarget).toBe('http://localhost:3001');
 });
 
-void test('resolveBackendProxyTarget ignores malformed registry content', () => {
+test('resolveBackendProxyTarget ignores malformed registry content', () => {
   const resolvedTarget = resolveBackendProxyTarget({
     readRegistryFile: () => '{"port":3001',
   });
@@ -42,7 +42,7 @@ void test('resolveBackendProxyTarget ignores malformed registry content', () => 
   expect(resolvedTarget).toBe('http://localhost:3000');
 });
 
-void test('resolveBackendProxyTarget ignores a stale registry whose pid is no longer live', () => {
+test('resolveBackendProxyTarget ignores a stale registry whose pid is no longer live', () => {
   const resolvedTarget = resolveBackendProxyTarget({
     isProcessLive: () => false,
     readRegistryFile: () =>
@@ -56,7 +56,7 @@ void test('resolveBackendProxyTarget ignores a stale registry whose pid is no lo
   expect(resolvedTarget).toBe('http://localhost:3000');
 });
 
-void test('dev and preview both use the same startup proxy target resolution logic', () => {
+test('dev and preview both use the same startup proxy target resolution logic', () => {
   const expectedApiProxyConfig = createApiProxyConfig(
     resolveBackendProxyTarget(),
   );

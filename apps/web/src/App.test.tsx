@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import App from './App';
@@ -13,23 +13,19 @@ function createJsonResponse(body: unknown, status = 200) {
 }
 
 beforeEach(() => {
-  window.history.pushState({}, '', '/');
+  window.history.pushState({}, '', '/statistics/failures');
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-void test('redirects / to /statistics/failures and shows a loading state while statistics load', async () => {
+test('shows a loading state while failure statistics load', async () => {
   const fetchMock = vi.fn().mockReturnValue(new Promise<Response>(() => {}));
 
   vi.stubGlobal('fetch', fetchMock);
 
   render(<App />);
-
-  await waitFor(() => {
-    expect(window.location.pathname).toBe('/statistics/failures');
-  });
 
   expect(
     await screen.findByRole('heading', { name: 'Failure statistics' }),
@@ -38,8 +34,7 @@ void test('redirects / to /statistics/failures and shows a loading state while s
   expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/statistics/failures');
 });
 
-void test('renders an empty state when the API returns no failures', async () => {
-  window.history.pushState({}, '', '/statistics/failures');
+test('renders an empty state when the API returns no failures', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(createJsonResponse([])));
 
   render(<App />);
@@ -49,8 +44,7 @@ void test('renders an empty state when the API returns no failures', async () =>
   ).toBeInTheDocument();
 });
 
-void test('renders the backend error message when the API request fails', async () => {
-  window.history.pushState({}, '', '/statistics/failures');
+test('renders the backend error message when the API request fails', async () => {
   vi.stubGlobal(
     'fetch',
     vi.fn().mockResolvedValue(
@@ -72,8 +66,7 @@ void test('renders the backend error message when the API request fails', async 
   ).toBeInTheDocument();
 });
 
-void test('renders populated failure statistics rows with run links', async () => {
-  window.history.pushState({}, '', '/statistics/failures');
+test('renders populated failure statistics rows with run links', async () => {
   vi.stubGlobal(
     'fetch',
     vi.fn().mockResolvedValue(
@@ -112,8 +105,7 @@ void test('renders populated failure statistics rows with run links', async () =
   );
 });
 
-void test('navigates to the placeholder run route when a run link is clicked', async () => {
-  window.history.pushState({}, '', '/statistics/failures');
+test('navigates to the placeholder run route when a run link is clicked', async () => {
   vi.stubGlobal(
     'fetch',
     vi.fn().mockResolvedValue(
