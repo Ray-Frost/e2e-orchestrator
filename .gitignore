@@ -5,6 +5,7 @@
 
 .codex
 .worktrees/
+/.runtime/
 
 node_modules/
 .pnpm-store/
