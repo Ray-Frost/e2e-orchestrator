@@ -28,11 +28,7 @@ async function initializeTestDatabaseSchema(prismaClient: PrismaClient) {
 
   for (const migrationDirectoryName of migrationDirectoryNames) {
     const migrationSql = await readFile(
-      path.join(
-        migrationRootPath,
-        migrationDirectoryName,
-        'migration.sql',
-      ),
+      path.join(migrationRootPath, migrationDirectoryName, 'migration.sql'),
       'utf8',
     );
     const migrationStatements = migrationSql

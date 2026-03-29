@@ -89,9 +89,7 @@ function logUnexpectedRegistryReadFailure(
   );
 }
 
-async function readRegistryEntry(
-  registryFilePath: string,
-): Promise<unknown> {
+async function readRegistryEntry(registryFilePath: string): Promise<unknown> {
   let rawRegistryJson: string;
 
   try {
