@@ -9,6 +9,8 @@ This directory stores feature-level planning assets extracted from
 - Keep `spec.md`, `plan.md`, and `tasks.md` together for each feature.
 - `spec.md` owns scope, behavior, acceptance criteria, and blocking open
   questions.
+- Keep `spec.md` feature-facing: do not put extraction history, migration
+  notes, or coding-thread guidance in the spec body.
 - `plan.md` owns implementation approach, affected areas, validation strategy,
   and risks.
 - `tasks.md` is the default implementation handoff for coding threads and must
@@ -25,3 +27,6 @@ This directory stores feature-level planning assets extracted from
 - [`001-run-artifact-persistence/`](./001-run-artifact-persistence/):
   runtime artifact directory layout and `meta.json` persistence behavior for
   runs.
+- [`002-failure-statistics/`](./002-failure-statistics/): backend
+  `GET /api/statistics/failures` aggregation and the frontend
+  `/statistics/failures` page.

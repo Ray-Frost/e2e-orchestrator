@@ -31,7 +31,7 @@ export default defineConfig(
   }),
   {
     basePath: import.meta.dirname,
-    files: ['vite.config.ts'],
+    files: ['vite.config.ts', 'vitest.config.ts'],
     languageOptions: {
       ecmaVersion: 2023,
       globals: globals.node,
@@ -44,7 +44,7 @@ export default defineConfig(
   },
   {
     basePath: import.meta.dirname,
-    files: ['src/**/*.{ts,tsx}', 'vite.config.ts'],
+    files: ['src/**/*.{ts,tsx}', 'vite.config.ts', 'vitest.config.ts'],
     rules: {
       ...sharedTypeScriptStyleRules,
     },

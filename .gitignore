@@ -4,8 +4,11 @@
 .env
 
 .codex
+.worktrees/
+/.runtime/
 
 node_modules/
+.pnpm-store/
 pnpm-debug.log*
 
 apps/*/node_modules/

@@ -171,10 +171,8 @@
   - 每条返回：`test_lib_case_code`, `case_title`, `status`, `failed_at`
   - MVP：全量返回
 - `GET /api/statistics/failures`
-  - 聚合键：`test_lib_case_code`
-  - 返回：`test_lib_case_code`, `case_title`, `fail_count`, `last_failed_at`, `last_run_id`
-  - `last_failed_at` 并列时，`last_run_id` 取最大 `run.id`
-  - MVP：全量返回
+  - 规划已迁移至 [`docs/specs/002-failure-statistics/`](./docs/specs/002-failure-statistics/)
+  - 该 API 的契约、聚合规则和验证要求以该目录下的 feature spec 为准
 
 统一错误体：
 
@@ -195,7 +193,7 @@
 
 - runs 列表页：最近运行、状态、创建 run、取消入口
 - run 详情页：概览、日志 tail、报告入口、case 列表
-- statistics 页：按 `test_lib_case_code` 聚合失败统计，展示 `case_title`，支持跳转 `last_run_id`
+- statistics 页：规划已迁移至 [`docs/specs/002-failure-statistics/`](./docs/specs/002-failure-statistics/)
 
 ## 12. 建议实施顺序（可直接执行）
 
@@ -206,9 +204,11 @@
 5. 实现 run artifact persistence（固定目录推导 + `meta.json` 写入），详见 `docs/specs/001-run-artifact-persistence/tasks.md`。
 6. 在 `demo-test-lib` 引入 `test_lib_case_code`（辅助函数传参方式）并补齐现有用例。
 7. 实现 results 解析与批量入库、runs 摘要回写（`test_lib_case_code` 必填，缺失按 `parse_or_write_error` 处理）。
-8. 实现 statistics 聚合查询（按 `test_lib_case_code` 聚合；`last_failed_at` 并列时取最大 `run.id`）。
+8. 实现 failure statistics feature（参见
+   `docs/specs/002-failure-statistics/tasks.md`）。
 9. 实现 logs API 字节偏移 cursor 协议与分页返回 `next_cursor`。
-10. 实现前端三页面并联调 API（cases/statistics 展示 `test_lib_case_code + case_title`）。
+10. 实现前端三页面并联调 API；failure statistics 细节见
+    `docs/specs/002-failure-statistics/`。
 11. 实现重启恢复逻辑与一致性校验脚本。
 12. 用场景集回归（success/fail/timeout/cancelled/abort/probe_failed）。
 
@@ -222,11 +222,11 @@
 4. `fail` 原因码固定 4 项：`probe_failed` / `cases_failed` / `runner_exit_nonzero` / `parse_or_write_error`。
 5. `duration_ms` 仅在 `start_time` 与 `end_time` 均存在时写入；否则保持 `NULL`，禁止写 `0`。
 
-### 13.2 统计口径与并列规则
+### 13.2 失败统计
 
-1. statistics 聚合主键使用 `test_lib_case_code`，不再以 `case_title` 作为聚合键。
-2. `case_title` 保留为展示文案字段。
-3. `last_failed_at` 并列时，`last_run_id` 取最大 `run.id`。
+该条目的详细规划已迁移至
+[`docs/specs/002-failure-statistics/`](./docs/specs/002-failure-statistics/)。
+本指南不再重复 failure statistics 的聚合键、排序、字段来源和页面行为细节。
 
 ### 13.3 `test_lib_case_code` 策略（v1）
 
