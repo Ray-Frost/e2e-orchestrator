@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import App from './App';
+import App from './app';
 
 function createJsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

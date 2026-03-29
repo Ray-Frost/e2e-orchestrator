@@ -6,11 +6,11 @@ import {
   Routes,
   useParams,
 } from 'react-router-dom';
-import './App.css';
+import './app.css';
 import {
   FailureStatisticsPage,
   failureStatisticsRoute,
-} from './FailureStatisticsPage';
+} from './failure-statistics-page';
 
 function RunPlaceholderPage() {
   const routeParams = useParams();
