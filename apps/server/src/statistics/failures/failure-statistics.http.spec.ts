@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -8,49 +8,30 @@ import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../../app.module';
+import { PrismaService } from '../../prisma/prisma.service';
 
 function createFailureStatisticsRequest(app: INestApplication) {
-  const httpServer = app.getHttpServer() as unknown as Parameters<
-    typeof request
-  >[0];
-
+  const httpServer = app.getHttpServer() as Parameters<typeof request>[0];
   return request(httpServer);
 }
 
-async function createFailureStatisticsHttpHarness(
-  testContext: {
-    after: (callback: () => void | Promise<void>) => void;
-  },
-  options: {
-    applyMigration?: boolean;
-  } = {},
-) {
+async function initializeTestDatabaseSchema(prismaClient: PrismaClient) {
   const serverRoot = path.resolve(__dirname, '../../../');
-  const sandboxRoot = await mkdtemp(
-    path.join(os.tmpdir(), 'failure-statistics-http-'),
-  );
-  const databasePath = path.join(sandboxRoot, 'failure-statistics.sqlite');
-  const databaseUrl = `file:${databasePath}`;
-  const originalDatabaseUrl = process.env.DATABASE_URL;
-  const prismaClient = new PrismaClient({
-    datasources: {
-      db: {
-        url: databaseUrl,
-      },
-    },
+  const migrationRootPath = path.join(serverRoot, 'prisma/migrations');
+  const migrationDirectoryEntries = await readdir(migrationRootPath, {
+    withFileTypes: true,
   });
+  const migrationDirectoryNames = migrationDirectoryEntries
+    .filter((directoryEntry) => directoryEntry.isDirectory())
+    .map((directoryEntry) => directoryEntry.name)
+    .sort();
 
-  testContext.after(async () => {
-    process.env.DATABASE_URL = originalDatabaseUrl;
-    await prismaClient.$disconnect();
-    await rm(sandboxRoot, { force: true, recursive: true });
-  });
-
-  if (options.applyMigration !== false) {
+  for (const migrationDirectoryName of migrationDirectoryNames) {
     const migrationSql = await readFile(
       path.join(
-        serverRoot,
-        'prisma/migrations/20260304151900_init_baseline/migration.sql',
+        migrationRootPath,
+        migrationDirectoryName,
+        'migration.sql',
       ),
       'utf8',
     );
@@ -63,12 +44,44 @@ async function createFailureStatisticsHttpHarness(
       await prismaClient.$executeRawUnsafe(`${migrationStatement};`);
     }
   }
+}
 
-  process.env.DATABASE_URL = databaseUrl;
+async function createFailureStatisticsHttpHarness(
+  testContext: {
+    after: (callback: () => void | Promise<void>) => void;
+  },
+  options: {
+    initializeTestDatabaseSchema?: boolean;
+  } = {},
+) {
+  const sandboxRoot = await mkdtemp(
+    path.join(os.tmpdir(), 'failure-statistics-http-'),
+  );
+  const databasePath = path.join(sandboxRoot, 'failure-statistics.sqlite');
+  const databaseUrl = `file:${databasePath}`;
+  const prismaClient = new PrismaService({
+    datasources: {
+      db: {
+        url: databaseUrl,
+      },
+    },
+  });
+
+  testContext.after(async () => {
+    await prismaClient.$disconnect();
+    await rm(sandboxRoot, { force: true, recursive: true });
+  });
+
+  if (options.initializeTestDatabaseSchema !== false) {
+    await initializeTestDatabaseSchema(prismaClient);
+  }
 
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
-  }).compile();
+  })
+    .overrideProvider(PrismaService)
+    .useValue(prismaClient)
+    .compile();
   const app = moduleRef.createNestApplication<INestApplication>();
 
   testContext.after(async () => {
@@ -440,7 +453,7 @@ void test('GET /api/statistics/failures', async (testContext) => {
 
 void test('GET /api/statistics/failures preserves the locked error shape when the query fails', async (testContext) => {
   const { app } = await createFailureStatisticsHttpHarness(testContext, {
-    applyMigration: false,
+    initializeTestDatabaseSchema: false,
   });
 
   const response = await createFailureStatisticsRequest(app).get(

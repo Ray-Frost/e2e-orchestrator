@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -121,4 +121,74 @@ void test('removeDevServerPortRegistryIfOwned keeps the registry file when it ch
   const parsedRegistryJson = JSON.parse(rawRegistryJson) as unknown;
 
   assert.deepEqual(parsedRegistryJson, replacementRegistryEntry);
+});
+
+void test('removeDevServerPortRegistryIfOwned treats a missing registry file as a no-op', async () => {
+  const registryRoot = await mkdtemp(
+    path.join(os.tmpdir(), 'dev-server-registry-'),
+  );
+  const registryFilePath = path.join(registryRoot, 'dev-server-port.json');
+
+  await removeDevServerPortRegistryIfOwned(
+    {
+      port: 3001,
+      pid: 12345,
+      started_at: '2026-03-28T10:00:00.000Z',
+    },
+    {
+      registryFilePath,
+    },
+  );
+
+  await assert.rejects(() => stat(registryFilePath));
+});
+
+void test('removeDevServerPortRegistryIfOwned leaves invalid registry JSON untouched', async (context) => {
+  const registryRoot = await mkdtemp(
+    path.join(os.tmpdir(), 'dev-server-registry-'),
+  );
+  const registryFilePath = path.join(registryRoot, 'dev-server-port.json');
+
+  context.mock.method(console, 'warn', () => undefined);
+
+  await writeFile(registryFilePath, '{"port": 3001');
+
+  await removeDevServerPortRegistryIfOwned(
+    {
+      port: 3001,
+      pid: 12345,
+      started_at: '2026-03-28T10:00:00.000Z',
+    },
+    {
+      registryFilePath,
+    },
+  );
+
+  const rawRegistryJson = await readFile(registryFilePath, 'utf8');
+  assert.equal(rawRegistryJson, '{"port": 3001');
+});
+
+void test('removeDevServerPortRegistryIfOwned leaves an unreadable registry path untouched', async (context) => {
+  const registryRoot = await mkdtemp(
+    path.join(os.tmpdir(), 'dev-server-registry-'),
+  );
+  const registryFilePath = path.join(registryRoot, 'dev-server-port.json');
+
+  context.mock.method(console, 'warn', () => undefined);
+
+  await mkdir(registryFilePath);
+
+  await removeDevServerPortRegistryIfOwned(
+    {
+      port: 3001,
+      pid: 12345,
+      started_at: '2026-03-28T10:00:00.000Z',
+    },
+    {
+      registryFilePath,
+    },
+  );
+
+  const registryPathStats = await stat(registryFilePath);
+  assert.equal(registryPathStats.isDirectory(), true);
 });

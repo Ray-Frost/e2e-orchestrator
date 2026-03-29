@@ -29,6 +29,15 @@ function isExistingFileError(error: unknown): error is NodeJS.ErrnoException {
   );
 }
 
+function isMissingFileError(error: unknown): error is NodeJS.ErrnoException {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'ENOENT'
+  );
+}
+
 function isDevServerPortRegistryEntry(
   value: unknown,
 ): value is DevServerPortRegistryEntry {
@@ -70,11 +79,36 @@ async function delay(milliseconds: number): Promise<void> {
   });
 }
 
-async function readRegistryEntry(registryFilePath: string): Promise<unknown> {
+function logUnexpectedRegistryReadFailure(
+  registryFilePath: string,
+  error: unknown,
+): void {
+  console.warn(
+    `Failed to read the dev server port registry at ${registryFilePath}; treating it as unavailable.`,
+    error,
+  );
+}
+
+async function readRegistryEntry(
+  registryFilePath: string,
+): Promise<unknown> {
+  let rawRegistryJson: string;
+
   try {
-    const rawRegistryJson = await readFile(registryFilePath, 'utf8');
+    rawRegistryJson = await readFile(registryFilePath, 'utf8');
+  } catch (error) {
+    if (isMissingFileError(error)) {
+      return undefined;
+    }
+
+    logUnexpectedRegistryReadFailure(registryFilePath, error);
+    return undefined;
+  }
+
+  try {
     return JSON.parse(rawRegistryJson) as unknown;
-  } catch {
+  } catch (error) {
+    logUnexpectedRegistryReadFailure(registryFilePath, error);
     return undefined;
   }
 }

@@ -6,11 +6,18 @@ void test('startBackendServer writes the local dev registry entry and logs the b
   const logMessages: string[] = [];
   const writtenRegistryEntries: unknown[] = [];
   const registeredCleanupCallbacks: Array<() => Promise<void> | void> = [];
+  let listenedPort: number | undefined;
 
   const result = await startBackendServer({
     app: {
-      getUrl: () => Promise.resolve('http://localhost:3001'),
-      listen: () => Promise.resolve(),
+      getUrl: () => {
+        assert.notEqual(listenedPort, undefined);
+        return Promise.resolve(`http://localhost:${listenedPort}`);
+      },
+      listen: (port) => {
+        listenedPort = port;
+        return Promise.resolve();
+      },
     },
     configuredPortValue: undefined,
     isLocalDevPortRegistryEnabled: true,
@@ -30,7 +37,7 @@ void test('startBackendServer writes the local dev registry entry and logs the b
   });
 
   assert.equal(result.boundPort, 3000);
-  assert.equal(result.boundUrl, 'http://localhost:3001');
+  assert.equal(result.boundUrl, 'http://localhost:3000');
   assert.deepEqual(writtenRegistryEntries, [
     {
       port: 3000,
@@ -38,18 +45,25 @@ void test('startBackendServer writes the local dev registry entry and logs the b
       started_at: '2026-03-28T10:00:00.000Z',
     },
   ]);
-  assert.deepEqual(logMessages, ['Backend listening at http://localhost:3001']);
+  assert.deepEqual(logMessages, ['Backend listening at http://localhost:3000']);
   assert.equal(registeredCleanupCallbacks.length, 1);
 });
 
 void test('startBackendServer skips registry writes and cleanup registration outside local dev registry mode', async () => {
   let hasWrittenRegistry = false;
   let cleanupRegistrationCount = 0;
+  let listenedPort: number | undefined;
 
   const result = await startBackendServer({
     app: {
-      getUrl: () => Promise.resolve('http://localhost:3000'),
-      listen: () => Promise.resolve(),
+      getUrl: () => {
+        assert.notEqual(listenedPort, undefined);
+        return Promise.resolve(`http://localhost:${listenedPort}`);
+      },
+      listen: (port) => {
+        listenedPort = port;
+        return Promise.resolve();
+      },
     },
     configuredPortValue: undefined,
     isLocalDevPortRegistryEnabled: false,
