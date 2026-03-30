@@ -9,6 +9,16 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../../app.module';
 import { PrismaService } from '../../prisma/prisma.service';
+import { SmokeSuiteService } from '../../runs/smoke-suite.service';
+
+function setOptionalEnvValue(key: string, value: string | undefined): void {
+  if (value === undefined) {
+    delete process.env[key];
+    return;
+  }
+
+  process.env[key] = value;
+}
 
 function createFailureStatisticsRequest(app: INestApplication) {
   const httpServer = app.getHttpServer() as Parameters<typeof request>[0];
@@ -62,22 +72,45 @@ async function createFailureStatisticsHttpHarness(
       },
     },
   });
+  const originalEnv = {
+    E2E_SMOKE_CWD: process.env.E2E_SMOKE_CWD,
+    E2E_SMOKE_COMMAND: process.env.E2E_SMOKE_COMMAND,
+    E2E_SMOKE_SUITE_NAME: process.env.E2E_SMOKE_SUITE_NAME,
+  };
+
+  process.env.E2E_SMOKE_CWD = sandboxRoot;
+  process.env.E2E_SMOKE_COMMAND = 'npm run test:smoke:platform';
+  process.env.E2E_SMOKE_SUITE_NAME = 'demo-smoke';
 
   testContext.after(async () => {
     await prismaClient.$disconnect();
     await rm(sandboxRoot, { force: true, recursive: true });
+    setOptionalEnvValue('E2E_SMOKE_CWD', originalEnv.E2E_SMOKE_CWD);
+    setOptionalEnvValue('E2E_SMOKE_COMMAND', originalEnv.E2E_SMOKE_COMMAND);
+    setOptionalEnvValue(
+      'E2E_SMOKE_SUITE_NAME',
+      originalEnv.E2E_SMOKE_SUITE_NAME,
+    );
   });
 
   if (options.initializeTestDatabaseSchema !== false) {
     await initializeTestDatabaseSchema(prismaClient);
   }
 
-  const moduleRef = await Test.createTestingModule({
+  const moduleBuilder = Test.createTestingModule({
     imports: [AppModule],
   })
     .overrideProvider(PrismaService)
-    .useValue(prismaClient)
-    .compile();
+    .useValue(prismaClient);
+
+  if (options.initializeTestDatabaseSchema === false) {
+    moduleBuilder.overrideProvider(SmokeSuiteService).useValue({
+      getSingletonSuiteSummaries: () => [],
+      getSuiteById: () => null,
+    });
+  }
+
+  const moduleRef = await moduleBuilder.compile();
   const app = moduleRef.createNestApplication<INestApplication>();
 
   testContext.after(async () => {

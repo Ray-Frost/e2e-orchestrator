@@ -30,3 +30,6 @@ This directory stores feature-level planning assets extracted from
 - [`002-failure-statistics/`](./002-failure-statistics/): backend
   `GET /api/statistics/failures` aggregation and the frontend
   `/statistics/failures` page.
+- [`003-external-smoke-run-loop/`](./003-external-smoke-run-loop/): singleton
+  smoke-suite bootstrap, backend run loop, and minimal `results.json` ingest
+  for run state and statistics.
