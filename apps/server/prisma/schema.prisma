@@ -32,13 +32,10 @@ enum case_status {
 
 model Suite {
   id         Int    @id @default(autoincrement())
-  suite_name String
+  suite_name String @unique
   command    String
 
   runs       Run[]
-
-  // index(suite_name)（若需要按名称筛选/检索）
-  @@index([suite_name])
   @@map("suites")
 }
 

@@ -2,177 +2,60 @@
 
 ## 1. 文档目标与范围
 
-本文件用于指导项目实现，目标是在单机环境完成一个可稳定演示的 Web E2E 测试平台闭环：
+本文件保留平台级、不随单个 feature spec 重复的约束。运行闭环的
+具体行为已迁移到：
 
-- 触发执行（suite -> run）
-- 排队调度（FIFO，并发上限 1）
-- 运行控制（超时、取消、重启恢复）
-- 产物归档（artifacts + meta.json）
-- 结果解析入库（runs + case_results）
-- 查询与统计（列表、详情、失败聚合 statistics）
+- [`docs/specs/001-run-artifact-persistence/`](./docs/specs/001-run-artifact-persistence/)
+- [`docs/specs/002-failure-statistics/`](./docs/specs/002-failure-statistics/)
+- [`docs/specs/003-external-smoke-run-loop/`](./docs/specs/003-external-smoke-run-loop/)
 
-## 2. 子系统边界与交付
+## 2. 平台边界
 
-- `sut-demo`（被测系统）：独立仓库，已准备就绪；本地默认 `http://localhost:3000`。
-- `demo-test-lib`（测试库）：独立仓库，已准备就绪；至少提供 `npm run test:smoke`。
-- `platform`（本项目核心）：当前仓库负责实现，技术栈为 NestJS + Prisma + SQLite + React（可用 Ant Design）。
+- `sut-demo` 和 `demo-test-lib` 保持在本仓库外，通过配置接入。
+- backend 负责 run 执行、产物、结果入库、和 statistics 数据源。
+- frontend 仅消费 backend API，不承载运行语义。
 
-跨仓协作约束（实现需满足）：
+## 3. 核心约束
 
-- platform 不托管 `sut-demo` 与 `demo-test-lib` 源码，通过配置接入外部仓库。
-- run 执行时的命令与工作目录（`command` + `cwd`）由 platform 记录并驱动。
-- platform 通过 `sut_base_url` + `probe_url` 与 SUT 联通。
-- 运行产物统一落在 backend 侧 `apps/server/artifacts/` 目录。
+- 单机、SQLite、低依赖。
+- 并发上限固定为 `1`。
+- SQLite 写入必须启用 WAL，并保持同一 run 写入链路严格串行
+  `await`。
+- API、数据库、JSON 字段统一 snake_case。
+- 对外资源标识字段固定为 `id`（number）。
+- `case_results.test_lib_case_code` 是统计唯一主键，`case_title` 仅
+  用于展示。
 
-## 3. 非目标（明确不做）
+## 4. 运行状态、时间、reason
 
-- 分布式调度、多机 runner 池、消息队列
-- 在线编写/调试测试脚本
-- 用例级取消（仅 run 级取消）
-- 实时日志逐行入库
-- 复杂权限系统、多租户
+- `created_at` 是唯一排队时间字段。
+- `start_time` 只在 probe 通过且 runner 进入 spawn 路径时写入。
+- `end_time` 和 `duration_ms` 只在终态收尾完成后写入。
+- 当前锁定的 `fail` reason 码仍是：
+  - `probe_failed`
+  - `cases_failed`
+  - `runner_exit_nonzero`
+  - `parse_or_write_error`
+- `timeout` 使用 `reason=timeout_exceeded`。
+- `duration_ms` 仅在 `start_time` 和 `end_time` 都存在时写入。
 
-## 4. 约束与核心原则
+## 5. 迁移入口
 
-- 单机部署，低外部依赖，SQLite 作为核心存储。
-- 并发上限固定为 `1`，单写者写库策略。
-- SQLite 稳健写入约束：启用 WAL；同一时刻仅一个写事务；同一 run 写入链路严格串行 `await`；禁止 `Promise.all` 并行写库。
-- 存储技术边界（v1）：不切换为 MySQL，保持 SQLite 单机方案。
-- 结果统计以数据库结构化明细为准（`case_results` 是统计唯一数据源）。
-- 用例统计主键使用 `test_lib_case_code`，`case_title` 仅用于展示。
-- API、数据库、JSON 字段名统一使用 snake_case；对外资源标识字段名固定为 `id`（number）。
-- 直接暴露数据库自增主键作为资源 `id`。
-- DB 与文件产物必须可双向追溯。
-- 排障链路要求：服务端日志、`meta.json` 与 API 统一使用单一 `id` 语义；如需资源上下文，使用 `run_id` / `suite_id` 命名。
+- 运行产物布局和 `meta.json` 规则见
+  [`001-run-artifact-persistence`](./docs/specs/001-run-artifact-persistence/).
+- failures 聚合规则和 `/api/statistics/failures` 见
+  [`002-failure-statistics`](./docs/specs/002-failure-statistics/).
+- singleton smoke suite、FIFO run loop、probe、spawn、timeout、和
+  `results.json` ingest 见
+  [`003-external-smoke-run-loop`](./docs/specs/003-external-smoke-run-loop/).
 
-## 5. 总体架构与模块
-
-- API 层：`suites/runs/cancellations/logs/report/cases/statistics`
-- 调度层：`pending` 队列、running 槽位、超时控制、状态迁移
-- 执行器：`child_process.spawn` 启动 Playwright 命令
-- 产物层：固定目录推导 + `meta.json` 快照
-- 解析入库层：读取 `results.json`，批量写入 `case_results`，回填 `runs`
-- 前端展示层：runs 列表、run 详情、statistics
-
-## 6. 运行状态机与时间语义
-
-### 6.1 状态机
-
-- 状态集合：`pending -> running -> (success | fail | timeout | cancelled | abort)`
-- 关键定义：
-  - `success`：执行成功且解析入库成功
-  - `fail`：probe 失败 / 用例失败 / 退出码异常 / 解析写库失败
-  - `timeout`：平台超时触发终止
-  - `cancelled`：用户取消
-  - `abort`：服务重启或关闭导致中断
-
-### 6.2 时间字段（权威）
-
-- `created_at`：创建并入队时间（必填）
-- `start_time`：probe 通过且准备/已 spawn runner（未进入执行时为 `NULL`）
-- `end_time`：进入终态且完成必要收尾（终态必填）
-- `duration_ms`：`end_time - start_time`（仅 start/end 均有值时写入）
-
-## 7. 调度、执行、取消、恢复
-
-### 7.1 调度
-
-- 新建 run 默认 `pending`。
-- 调度器循环：若无 `running`，按 `created_at` FIFO 取队首执行。
-- 全局并发固定 1。
-
-### 7.2 预检查（probe）
-
-- 默认 `probe_url = ${sut_base_url}/`
-- HTTP `2xx-3xx` 判定通过
-- 超时 3 秒，重试 1 次（总尝试 2 次）
-- 失败则 `status=fail`、`reason=probe_failed`
-
-### 7.3 执行器
-
-- 通过 `spawn` 启动 suite 命令（如 `npm run test:smoke`）
-- stdout/stderr 直接落文件：`stdout.log`、`stderr.log`
-- 运行结束后再解析 `results.json`，批量写入数据库
-
-### 7.4 超时与取消
-
-- 超时阈值默认 10 分钟，触发后终止进程并标记 `timeout`
-- 取消 API：`POST /api/runs/{id}/cancellations`
-- 统一终止入口：`terminate_run(run_id, reason)`
-- `pending`：直接出队终止
-- `running`：优先 `SIGTERM`，短等待后 `SIGKILL`（针对 pgid）
-
-### 7.5 重启恢复
-
-- 服务启动时扫描历史 `pending/running`
-- 统一收敛为 `abort` + `reason=server_restart`
-- 若 `meta.json` 存在存活 pgid，执行进程组清理（TERM -> KILL）
-
-## 8. 产物归档与 meta.json
-
-该 feature 的规划已迁移至
-[`docs/specs/001-run-artifact-persistence/`](./docs/specs/001-run-artifact-persistence/)。
-后续实现 thread 默认使用该目录下的
-[`spec.md`](./docs/specs/001-run-artifact-persistence/spec.md)、
-[`plan.md`](./docs/specs/001-run-artifact-persistence/plan.md)、
-[`tasks.md`](./docs/specs/001-run-artifact-persistence/tasks.md) 作为直接输入。
-
-已迁移的范围仅限运行产物持久化与 `meta.json` 规则。本指南中仍保留与该主题相关、但尚未拆分的 artifact 访问与 report 合同，例如第 10 节的 run 详情 / report API，以及第 13.7 节中的缺失产物访问语义。
-
-本节现在仅保留跨 feature 共享约束：
-
-- 运行产物根目录位于 `apps/server/artifacts/`
-- 产物路径继续按 `run_id` 约定推导，不维护独立 artifacts 索引
-- `meta.json` 与诊断链路继续遵循单一 `id` 语义；如需资源上下文，使用 `run_id` / `suite_id`
-
-## 9. 数据库模型与索引（以 `apps/server/prisma/schema.prisma` 为准）
-
-权威定义文件：`apps/server/prisma/schema.prisma`。
-
-### 9.1 表结构（按 schema）
-
-本节以 `apps/server/prisma/schema.prisma` 为唯一事实来源（source of truth），不在文档内重复列出字段明细。
-
-### 9.2 枚举、默认值与关系
-
-本节以 `apps/server/prisma/schema.prisma` 为唯一事实来源（source of truth），不在文档内重复列出枚举、默认值与关系明细。
-`runs.reason` 的业务口径与白名单规则见第 13.1、13.6。
-
-### 9.3 索引（按 schema）
-
-本节以 `apps/server/prisma/schema.prisma` 为唯一事实来源（source of truth），索引变更以 schema 与 migration 为准。
-
-## 10. API 最小契约（MVP）
-
-- MVP 不引入分页参数；后续按数据规模再评估。
-- 所有响应体中的 `id`、`suite_id`、`last_run_id` 均为 number。
-- URL path param `{id}` 采用十进制整数字符串；服务端解析为 number。非法 id 格式返回 `400`，合法但不存在返回 `404`。
+## 6. API 约定
 
 - `GET /api/suites`
-- `POST /api/runs`（请求体：`suite_id`（number））
+- `POST /api/runs`
 - `GET /api/runs`
-  - MVP：全量返回（按 `created_at` 倒序）
 - `GET /api/runs/{id}`
-  - 返回字段：`id`, `suite_id`, `suite_name`, `status`, `reason`, `exit_code`, `command`, `cwd`, `sut_base_url`, `probe_url`, `artifacts`
-  - `artifacts`：`{ stdout_log, stderr_log, results_json, report_dir }`
-- `POST /api/runs/{id}/cancellations`
-  - 请求体：空（不接收客户端自定义 `reason`；服务端固定 `reason=user_cancelled`）
-  - 仅 `pending/running` 可取消；终态取消返回 `400`
-  - 对终态 run 返回 `400` 时，保持统一错误体；`error.message` 使用可读文案（不拼接 `status/reason` 结构化片段）
-- `GET /api/runs/{id}/logs/stdout?tail=200&cursor`
-  - 返回字段：`lines(string[])`, `next_cursor`, `has_more`
-  - `cursor` 为字节偏移整数；响应返回 `next_cursor` 与 `has_more`
-  - 非法 cursor 返回 `400`
-  - MVP：仅开放 `stdout` 子资源；后续可扩展 `GET /api/runs/{id}/logs/stderr?tail&cursor`
-  - 待定细则：见 13.8（实现该 API 前定稿）
-- `GET /api/runs/{id}/report`
-  - 行为：可 `302` 跳转至 report 静态资源，或由后端反向代理返回 HTML
-- `GET /api/runs/{id}/cases`
-  - 每条返回：`test_lib_case_code`, `case_title`, `status`, `failed_at`
-  - MVP：全量返回
 - `GET /api/statistics/failures`
-  - 规划已迁移至 [`docs/specs/002-failure-statistics/`](./docs/specs/002-failure-statistics/)
-  - 该 API 的契约、聚合规则和验证要求以该目录下的 feature spec 为准
 
 统一错误体：
 
@@ -184,80 +67,20 @@
 }
 ```
 
-错误处理约定（v1）：
+`400` 表示无效输入，`404` 表示资源不存在。
 
-- `error` 仅返回 `message`，不返回 `code`。
-- 前端不基于 `message` 做程序分支，仅用于展示；如需分支，使用 HTTP 状态码与接口上下文。
+## 7. DB 与 migration
 
-## 11. 前端页面最小实现
+- 以 `apps/server/prisma/schema.prisma` 为唯一事实来源。
+- schema 变更必须同步 migration。
+- `Suite` 保持最小字段集，且 `suite_name` 为唯一。
 
-- runs 列表页：最近运行、状态、创建 run、取消入口
-- run 详情页：概览、日志 tail、报告入口、case 列表
-- statistics 页：规划已迁移至 [`docs/specs/002-failure-statistics/`](./docs/specs/002-failure-statistics/)
+## 8. 实施顺序
 
-## 12. 建议实施顺序（可直接执行）
-
-1. 配置跨仓联调：接入已就绪的 `sut-demo` 与 `demo-test-lib`（固化 `sut_base_url`、`command`、`cwd`）。
-2. 在触发条件满足的 feature PR 内落地 Prisma 基建与 migration，并以现有 `apps/server/prisma/schema.prisma` 为准执行。
-3. 实现 runs 创建与调度器（FIFO + 并发=1 + 状态流转）。
-4. 实现执行器（spawn、日志落盘、超时、取消、清理）。
-5. 实现 run artifact persistence（固定目录推导 + `meta.json` 写入），详见 `docs/specs/001-run-artifact-persistence/tasks.md`。
-6. 在 `demo-test-lib` 引入 `test_lib_case_code`（辅助函数传参方式）并补齐现有用例。
-7. 实现 results 解析与批量入库、runs 摘要回写（`test_lib_case_code` 必填，缺失按 `parse_or_write_error` 处理）。
-8. 实现 failure statistics feature（参见
-   `docs/specs/002-failure-statistics/tasks.md`）。
-9. 实现 logs API 字节偏移 cursor 协议与分页返回 `next_cursor`。
-10. 实现前端三页面并联调 API；failure statistics 细节见
-    `docs/specs/002-failure-statistics/`。
-11. 实现重启恢复逻辑与一致性校验脚本。
-12. 用场景集回归（success/fail/timeout/cancelled/abort/probe_failed）。
-
-## 13. 决策归档（已定稿）
-
-### 13.1 运行状态、时间与 reason 口径
-
-1. 仅用户取消 = `cancelled`（`reason=user_cancelled`）；服务关闭/重启导致中断 = `abort`（`reason=server_shutdown/server_restart`）。
-2. 时间口径仅保留 `created_at`，不引入 `queued_time`。
-3. probe 固定为“超时 3 秒，重试 1 次（总尝试 2 次）”。
-4. `fail` 原因码固定 4 项：`probe_failed` / `cases_failed` / `runner_exit_nonzero` / `parse_or_write_error`。
-5. `duration_ms` 仅在 `start_time` 与 `end_time` 均存在时写入；否则保持 `NULL`，禁止写 `0`。
-
-### 13.2 失败统计
-
-该条目的详细规划已迁移至
-[`docs/specs/002-failure-statistics/`](./docs/specs/002-failure-statistics/)。
-本指南不再重复 failure statistics 的聚合键、排序、字段来源和页面行为细节。
-
-### 13.3 `test_lib_case_code` 策略（v1）
-
-1. 在 `case_results` 落库 `test_lib_case_code`（`NOT NULL`）；v1 不新增 `case_key` 列。
-2. `test_lib_case_code` 使用全局可读枚举字符串（示例：`AUTH_LOGIN_INVALID_PASSWORD`）。
-3. `demo-test-lib` 使用辅助函数传参声明（例如 `caseTest(test_lib_case_code, case_title, fn)`）。
-
-### 13.4 logs cursor 协议
-
-1. `GET /api/runs/{id}/logs/stdout` 的 `cursor` 定义为字节偏移整数。
-2. 接口返回 `next_cursor` 与 `has_more`；非法 cursor 返回 `400`。
-
-### 13.5 DB 与 meta 写入策略
-
-已迁移至 [`docs/specs/001-run-artifact-persistence/spec.md`](./docs/specs/001-run-artifact-persistence/spec.md) 的 `Failure Semantics` 段落；后续该 feature 的实现与 review 以 feature spec 为准。
-
-### 13.6 reason 值归纳（当前实现）
-
-1. 按 `runs.status` 分组：
-   - `success`：`NULL`
-   - `cancelled`：`user_cancelled`
-   - `abort`：`server_restart` / `server_shutdown`
-   - `timeout`：`timeout_exceeded`
-   - `fail`：`probe_failed` / `cases_failed` / `runner_exit_nonzero` / `parse_or_write_error`
-2. `runs.reason` 当前保持 `String?`，由应用层按状态子集做白名单校验（暂不切 enum）。
-
-### 13.7 补充实施约束（并入）
-
-1. SQLite 写入稳健策略：启用 WAL；同一时刻仅一个写事务；同一 run 写入链路严格串行 `await`；禁止 `Promise.all` 并行写库。
-2. 存储技术边界（v1）：不切换为 MySQL，保持 SQLite 单机方案。
-3. 命名规范：API、数据库、JSON 字段统一 snake_case；对外资源标识字段固定为 `id`（number）。
+1. 优先完成 `003-external-smoke-run-loop`.
+2. 其次保持 `001-run-artifact-persistence` 与 `002-failure-statistics`
+   行为稳定。
+3. 最后再扩展前端或其他非本 slice 能力。
 4. 标识规则：直接暴露数据库自增主键作为资源 `id`。
 5. 排障链路：服务端日志与 `meta.json` 使用单一 `id` 语义；如需资源上下文，使用 `run_id` / `suite_id` 命名。
 6. 取消接口：请求体必须为空，不接收客户端自定义 `reason`；服务端固定 `reason=user_cancelled`。终态取消返回 `400`，保持统一错误体，`error.message` 仅返回可读文案（不携带 `status/reason` 结构化片段）。
