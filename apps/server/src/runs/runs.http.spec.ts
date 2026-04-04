@@ -53,6 +53,12 @@ interface RunDetailResponse extends RunSummaryResponse {
     results_json: boolean;
     report_dir: boolean;
   };
+  result_summary: {
+    total_count: number;
+    passed_count: number;
+    failed_count: number;
+    skipped_count: number;
+  } | null;
 }
 
 interface RunListItemResponse extends RunSummaryResponse {
@@ -453,6 +459,12 @@ void test('POST /api/runs executes a successful smoke run and exposes artifact p
     results_json: true,
     report_dir: true,
   });
+  assert.deepEqual(runDetail.result_summary, {
+    total_count: 1,
+    passed_count: 1,
+    failed_count: 0,
+    skipped_count: 0,
+  });
 
   const runCases = await prismaClient.caseResult.findMany({
     where: {
@@ -469,6 +481,77 @@ void test('POST /api/runs executes a successful smoke run and exposes artifact p
 
   assert.equal(failureStatisticsResponse.status, 200);
   assert.deepEqual(failureStatisticsResponse.body, []);
+});
+
+void test('GET /api/runs/{id} includes skipped case counts in result_summary', async (testContext) => {
+  const { app, prismaClient } = await createRunsHttpHarness(testContext);
+
+  const suiteResponse = await createHttpRequest(app).get('/api/suites');
+  const suiteRows = readJsonBody<SuiteSummaryResponse[]>(suiteResponse);
+  const suiteId = suiteRows[0].id;
+  const createdAt = new Date('2026-03-20T12:00:00.000Z');
+  const startTime = new Date('2026-03-20T12:00:05.000Z');
+  const endTime = new Date('2026-03-20T12:00:17.000Z');
+
+  const createdRun = await prismaClient.run.create({
+    data: {
+      suite_id: suiteId,
+      suite_name_snapshot: 'demo-smoke',
+      status: 'fail',
+      reason: 'cases_failed',
+      exit_code: 0,
+      created_at: createdAt,
+      start_time: startTime,
+      end_time: endTime,
+      duration_ms: 12_000,
+      command: 'npm run test:smoke:platform',
+      cwd: '/tmp/demo-test-lib',
+      sut_base_url: 'http://localhost:3000',
+      probe_url: 'http://localhost:3000/',
+    },
+  });
+
+  await prismaClient.caseResult.createMany({
+    data: [
+      {
+        run_id: createdRun.id,
+        test_lib_case_code: 'AUTH_LOGIN_SUCCESS_ADD_ASSET',
+        case_title: 'User logs in successfully and clicks Add Asset',
+        status: 'pass',
+        failed_at: null,
+        duration_ms: 5,
+      },
+      {
+        run_id: createdRun.id,
+        test_lib_case_code: 'AUTH_LOGIN_INVALID_PASSWORD',
+        case_title: 'Shows an invalid password error',
+        status: 'fail',
+        failed_at: endTime,
+        duration_ms: 15,
+      },
+      {
+        run_id: createdRun.id,
+        test_lib_case_code: 'PROFILE_OPEN_SETTINGS',
+        case_title: 'User opens account settings',
+        status: 'skip',
+        failed_at: null,
+        duration_ms: 0,
+      },
+    ],
+  });
+
+  const runDetailResponse = await createHttpRequest(app).get(
+    `/api/runs/${createdRun.id}`,
+  );
+  const runDetail = readJsonBody<RunDetailResponse>(runDetailResponse);
+
+  assert.equal(runDetailResponse.status, 200);
+  assert.deepEqual(runDetail.result_summary, {
+    total_count: 3,
+    passed_count: 1,
+    failed_count: 1,
+    skipped_count: 1,
+  });
 });
 
 void test('GET /api/runs returns newest-first summaries for runs with different terminal outcomes', async (testContext) => {
@@ -631,6 +714,7 @@ void test('POST /api/runs terminalizes probe failures without spawning the runne
     results_json: false,
     report_dir: false,
   });
+  assert.equal(runDetail.result_summary, null);
 });
 
 void test('POST /api/runs terminalizes failed cases as cases_failed and keeps failure statistics compatible', async (testContext) => {
@@ -661,6 +745,19 @@ void test('POST /api/runs terminalizes failed cases as cases_failed and keeps fa
   assert.equal(terminalRunRecord.status, 'fail');
   assert.equal(terminalRunRecord.reason, 'cases_failed');
   assert.notEqual(failedCaseResult, null);
+
+  const runDetailResponse = await createHttpRequest(app).get(
+    `/api/runs/${createdRun.id}`,
+  );
+  const runDetail = readJsonBody<RunDetailResponse>(runDetailResponse);
+
+  assert.equal(runDetailResponse.status, 200);
+  assert.deepEqual(runDetail.result_summary, {
+    total_count: 1,
+    passed_count: 0,
+    failed_count: 1,
+    skipped_count: 0,
+  });
 
   const failureStatisticsResponse = await createHttpRequest(app).get(
     '/api/statistics/failures',
@@ -712,6 +809,7 @@ void test('POST /api/runs terminalizes slow runs as timeout', async (testContext
   assert.equal(runDetail.artifacts.stdout_log, true);
   assert.equal(runDetail.artifacts.stderr_log, true);
   assert.equal(runDetail.artifacts.results_json, false);
+  assert.equal(runDetail.result_summary, null);
 });
 
 void test('POST /api/runs returns runner_exit_nonzero when the process exits before valid ingest', async (testContext) => {

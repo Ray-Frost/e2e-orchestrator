@@ -7,6 +7,7 @@ import type {
   RunArtifactPresence,
   RunDetail,
   RunExecutionContext,
+  RunResultSummary,
   RunSummary,
 } from './runs.types';
 
@@ -66,6 +67,55 @@ async function getRunArtifactPresence(
     stderr_log: await pathExists(artifactPaths.stderrLog),
     results_json: await pathExists(artifactPaths.resultsJson),
     report_dir: await pathExists(artifactPaths.reportDir),
+  };
+}
+
+async function getRunResultSummary(
+  prismaService: PrismaService,
+  runId: number,
+): Promise<RunResultSummary | null> {
+  const groupedCounts = await prismaService.caseResult.groupBy({
+    by: ['status'],
+    where: {
+      run_id: runId,
+    },
+    _count: {
+      _all: true,
+    },
+  });
+
+  if (groupedCounts.length === 0) {
+    return null;
+  }
+
+  let totalCount = 0;
+  let passedCount = 0;
+  let failedCount = 0;
+  let skippedCount = 0;
+
+  for (const groupedCount of groupedCounts) {
+    totalCount += groupedCount._count._all;
+
+    if (groupedCount.status === 'pass') {
+      passedCount = groupedCount._count._all;
+      continue;
+    }
+
+    if (groupedCount.status === 'fail') {
+      failedCount = groupedCount._count._all;
+      continue;
+    }
+
+    if (groupedCount.status === 'skip') {
+      skippedCount = groupedCount._count._all;
+    }
+  }
+
+  return {
+    total_count: totalCount,
+    passed_count: passedCount,
+    failed_count: failedCount,
+    skipped_count: skippedCount,
   };
 }
 
@@ -168,7 +218,10 @@ export class RunsService {
       return null;
     }
 
-    const artifactPresence = await getRunArtifactPresence(runRecord.id);
+    const [artifactPresence, resultSummary] = await Promise.all([
+      getRunArtifactPresence(runRecord.id),
+      getRunResultSummary(this.prismaService, runRecord.id),
+    ]);
 
     return {
       ...toRunSummary(runRecord),
@@ -177,6 +230,7 @@ export class RunsService {
       sut_base_url: runRecord.sut_base_url,
       probe_url: runRecord.probe_url,
       artifacts: artifactPresence,
+      result_summary: resultSummary,
     };
   }
 
