@@ -38,6 +38,9 @@ jobs:
       - name: Run server tests
         run: pnpm --filter server test
 
+      - name: Run web tests
+        run: pnpm --filter web test
+
       - name: Build web
         run: pnpm --filter web build
 

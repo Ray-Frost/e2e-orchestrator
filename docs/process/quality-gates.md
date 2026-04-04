@@ -12,7 +12,7 @@ This document is the detailed source for repository quality-gate rules.
 - Markdown-only exception: if staged changes are only `*.md`, `pnpm lint` may be skipped before handoff.
 - Pre-merge gate (GitHub PR): require `.github/workflows/ci.yml` checks to pass.
 - Pre-release gate (GitHub release flow): require `.github/workflows/release.yml` verify job to pass before publish.
-- Keep branch/ruleset protection aligned with CI checks (at least `CI / lint`, `CI / server-test`, and `CI / build`).
+- Keep branch/ruleset protection aligned with CI checks (at least `CI / lint`, `CI / server-test`, `CI / web-test`, and `CI / build`).
 - DB Gate is independent from pre-commit and follows the section below.
 
 ## DB Gate (Prisma/DB Feature Work)
