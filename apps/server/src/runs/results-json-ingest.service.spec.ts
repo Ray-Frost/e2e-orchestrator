@@ -84,9 +84,11 @@ void test('parsePlaywrightResultsJson extracts one row per test and maps outcome
 });
 
 void test('parsePlaywrightResultsJson parses the attached demo-test-lib results.json shape', async () => {
+  // Keep a versioned in-repo fixture so this test does not drift with
+  // ignored runtime artifacts from the external demo-test-lib checkout.
   const realResultsJsonPath = path.resolve(
     __dirname,
-    '../../../../../demo-test-lib/results.json',
+    './fixtures/demo-test-lib-results.json',
   );
   const realResultsJson = await readFile(realResultsJsonPath, 'utf8');
 
@@ -96,7 +98,7 @@ void test('parsePlaywrightResultsJson parses the attached demo-test-lib results.
       case_title: 'User logs in successfully and clicks Add Asset',
       status: 'pass',
       failed_at: null,
-      duration_ms: 1532,
+      duration_ms: 1193,
     },
   ]);
 });

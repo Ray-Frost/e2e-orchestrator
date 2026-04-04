@@ -1,0 +1,75 @@
+{
+  "config": {
+    "configFile": "/Users/frost/Work/demo-test-lib/playwright.platform.config.ts",
+    "rootDir": "/Users/frost/Work/demo-test-lib/tests",
+    "projects": [
+      {
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/Users/frost/Work/demo-test-lib/tests",
+        "timeout": 30000
+      }
+    ],
+    "version": "1.57.0"
+  },
+  "suites": [
+    {
+      "title": "smoke.spec.ts",
+      "file": "smoke.spec.ts",
+      "specs": [
+        {
+          "title": "User logs in successfully and clicks Add Asset",
+          "ok": true,
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "test_lib_case_code",
+                  "description": "AUTH_LOGIN_SUCCESS_ADD_ASSET"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1193,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-04-03T15:42:41.678Z",
+                  "annotations": [
+                    {
+                      "type": "test_lib_case_code",
+                      "description": "AUTH_LOGIN_SUCCESS_ADD_ASSET"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4219922fea2e2bd3c691-b0f6c55dbaeffff8a027",
+          "file": "smoke.spec.ts",
+          "line": 7,
+          "column": 5
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-04-03T15:42:41.471Z",
+    "duration": 2723.716,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

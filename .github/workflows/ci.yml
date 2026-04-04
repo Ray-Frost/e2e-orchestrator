@@ -5,10 +5,52 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      server_changed: ${{ steps.detect.outputs.server_changed }}
+      web_changed: ${{ steps.detect.outputs.web_changed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect scoped changes
+        id: detect
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          changed_files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+
+          echo "Changed files:"
+          printf '%s\n' "$changed_files"
+
+          server_changed=false
+          web_changed=false
+
+          if printf '%s\n' "$changed_files" | grep -Eq '^(apps/server/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|\.github/)'; then
+            server_changed=true
+          fi
+
+          if printf '%s\n' "$changed_files" | grep -Eq '^(apps/web/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|\.github/)'; then
+            web_changed=true
+          fi
+
+          {
+            echo "server_changed=$server_changed"
+            echo "web_changed=$web_changed"
+          } >> "$GITHUB_OUTPUT"
+
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -34,9 +76,12 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-  build:
+  server-test:
     runs-on: ubuntu-latest
-    needs: lint
+    needs:
+      - changes
+      - lint
+    if: ${{ needs.changes.outputs.server_changed == 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -57,8 +102,88 @@ jobs:
       - name: Generate Prisma Client
         run: pnpm --filter server db:generate
 
-      - name: Build web
-        run: pnpm --filter web build
+      - name: Run server tests
+        run: pnpm --filter server test
+
+  web-test:
+    runs-on: ubuntu-latest
+    needs:
+      - changes
+      - lint
+    if: ${{ needs.changes.outputs.web_changed == 'true' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run web tests
+        run: pnpm --filter web test
+
+  server-build:
+    runs-on: ubuntu-latest
+    needs:
+      - changes
+      - lint
+      - server-test
+    if: ${{ needs.changes.outputs.server_changed == 'true' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter server db:generate
 
       - name: Build server
         run: pnpm --filter server build
+
+  web-build:
+    runs-on: ubuntu-latest
+    needs:
+      - changes
+      - lint
+      - web-test
+    if: ${{ needs.changes.outputs.web_changed == 'true' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web
+        run: pnpm --filter web build
