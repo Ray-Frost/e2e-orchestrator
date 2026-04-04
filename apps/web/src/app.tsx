@@ -1,39 +1,10 @@
-import {
-  BrowserRouter,
-  Link,
-  Navigate,
-  Route,
-  Routes,
-  useParams,
-} from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import './app.css';
 import {
   FailureStatisticsPage,
   failureStatisticsRoute,
 } from './failure-statistics-page';
-
-function RunPlaceholderPage() {
-  const routeParams = useParams();
-  const runId = routeParams.id ?? 'unknown';
-
-  return (
-    <main className="app-shell">
-      <header className="page-header">
-        <p className="page-eyebrow">Runs</p>
-        <h1>{`Run ${runId}`}</h1>
-        <p className="page-summary">
-          Placeholder route for future run details.
-        </p>
-      </header>
-      <section className="status-panel">
-        <p>Run details are not implemented yet.</p>
-        <Link className="run-link" to={failureStatisticsRoute}>
-          Back to failure statistics
-        </Link>
-      </section>
-    </main>
-  );
-}
+import { RunDetailPage, runDetailRoutePattern } from './run-detail-page';
 
 function App() {
   return (
@@ -47,7 +18,7 @@ function App() {
           path={failureStatisticsRoute}
           element={<FailureStatisticsPage />}
         />
-        <Route path="/runs/:id" element={<RunPlaceholderPage />} />
+        <Route path={runDetailRoutePattern} element={<RunDetailPage />} />
         <Route
           path="*"
           element={<Navigate replace to={failureStatisticsRoute} />}

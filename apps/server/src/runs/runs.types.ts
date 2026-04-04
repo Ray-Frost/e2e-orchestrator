@@ -13,12 +13,20 @@ export interface RunSummary {
   duration_ms: number | null;
 }
 
+export interface RunResultSummary {
+  total_count: number;
+  passed_count: number;
+  failed_count: number;
+  skipped_count: number;
+}
+
 export interface RunDetail extends RunSummary {
   command: string;
   cwd: string;
   sut_base_url: string;
   probe_url: string;
   artifacts: RunArtifactPresence;
+  result_summary: RunResultSummary | null;
 }
 
 export interface RunArtifactPresence {
