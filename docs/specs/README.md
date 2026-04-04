@@ -33,3 +33,6 @@ This directory stores feature-level planning assets extracted from
 - [`003-external-smoke-run-loop/`](./003-external-smoke-run-loop/): singleton
   smoke-suite bootstrap, backend run loop, and minimal `results.json` ingest
   for run state and statistics.
+- [`004-run-detail-page/`](./004-run-detail-page/): read-only `/runs/:id` page,
+  backward-compatible run-detail result summary, and observation-first detail
+  rendering.
