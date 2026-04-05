@@ -59,7 +59,7 @@ export class RunsController {
 
   @Get('suites')
   async getSuites() {
-    return this.smokeSuiteService.getSingletonSuiteSummaries();
+    return this.smokeSuiteService.getSuiteSummaries();
   }
 
   @Post('runs')

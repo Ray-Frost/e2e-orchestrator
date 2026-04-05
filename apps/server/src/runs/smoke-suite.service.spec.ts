@@ -122,12 +122,16 @@ async function createSmokeSuiteHttpHarness(
   };
 }
 
-void test('startup sync seeds exactly one singleton suite row', async (testContext) => {
+void test('startup sync seeds the configured suite rows in stable order', async (testContext) => {
   const { prismaClient } = await createSmokeSuiteHttpHarness(testContext, {
     cwd: '/tmp/demo-test-lib',
   });
 
-  const suiteRows = await prismaClient.suite.findMany();
+  const suiteRows = await prismaClient.suite.findMany({
+    orderBy: {
+      id: 'asc',
+    },
+  });
 
   assert.deepEqual(suiteRows, [
     {
@@ -135,10 +139,20 @@ void test('startup sync seeds exactly one singleton suite row', async (testConte
       suite_name: 'demo-smoke',
       command: 'npm run test:smoke:platform',
     },
+    {
+      id: 2,
+      suite_name: 'demo-smoke-30-second-case',
+      command: 'npm run test:smoke:platform:with-30-second-case',
+    },
+    {
+      id: 3,
+      suite_name: 'demo-smoke-with-failure',
+      command: 'npm run test:smoke:platform:with-failure',
+    },
   ]);
 });
 
-void test('startup sync collapses stale suite rows onto the canonical singleton suite', async (testContext) => {
+void test('startup sync keeps historical suite rows while seeding the active suite list', async (testContext) => {
   const { prismaClient } = await createSmokeSuiteHttpHarness(testContext, {
     cwd: '/tmp/demo-test-lib',
     beforeAppInit: async (prismaClient) => {
@@ -169,10 +183,12 @@ void test('startup sync collapses stale suite rows onto the canonical singleton 
 
   const suiteRows = await prismaClient.suite.findMany({
     orderBy: {
-      id: 'asc',
+      suite_name: 'asc',
     },
   });
-  const canonicalSuite = suiteRows[0];
+  const primarySuite = suiteRows.find(
+    (suiteRow) => suiteRow.suite_name === 'demo-smoke',
+  );
   const runRows = await prismaClient.run.findMany({
     select: {
       suite_id: true,
@@ -185,18 +201,40 @@ void test('startup sync collapses stale suite rows onto the canonical singleton 
     },
   });
 
-  assert.equal(suiteRows.length, 1);
-  assert.deepEqual(canonicalSuite, {
-    id: canonicalSuite?.id,
-    suite_name: 'demo-smoke',
-    command: 'npm run test:smoke:platform',
-  });
+  assert.equal(suiteRows.length, 4);
+  assert.equal(primarySuite?.command, 'npm run test:smoke:platform');
+  assert.deepEqual(
+    suiteRows.map((suiteRow) => ({
+      suite_name: suiteRow.suite_name,
+      command: suiteRow.command,
+    })),
+    [
+      {
+        suite_name: 'demo-smoke',
+        command: 'npm run test:smoke:platform',
+      },
+      {
+        suite_name: 'demo-smoke-30-second-case',
+        command: 'npm run test:smoke:platform:with-30-second-case',
+      },
+      {
+        suite_name: 'demo-smoke-with-failure',
+        command: 'npm run test:smoke:platform:with-failure',
+      },
+      {
+        suite_name: 'legacy-smoke',
+        command: 'npm run legacy:smoke',
+      },
+    ],
+  );
   assert.deepEqual(runRows, [
     {
-      suite_id: canonicalSuite?.id,
+      suite_id: suiteRows.find(
+        (suiteRow) => suiteRow.suite_name === 'legacy-smoke',
+      )?.id,
       suite_name_snapshot: 'legacy-smoke',
       suite: {
-        suite_name: 'demo-smoke',
+        suite_name: 'legacy-smoke',
       },
     },
   ]);

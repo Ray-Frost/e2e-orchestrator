@@ -55,6 +55,7 @@ Create an ADR when at least one condition is true:
 - `ADR-0002`: ESLint Typed-Linting Boundaries in Monorepo. Status: `Accepted`. Date: `2026-03-06`. File: [ADR-0002-eslint-typed-linting-boundaries.md](./ADR-0002-eslint-typed-linting-boundaries.md)
 - `ADR-0003`: Single Numeric Resource IDs. Status: `Accepted`. Date: `2026-03-16`. File: [ADR-0003-single-numeric-resource-ids.md](./ADR-0003-single-numeric-resource-ids.md)
 - `ADR-0004`: Suites Page as the Primary Frontend Entry Route. Status: `Accepted`. Date: `2026-04-05`. File: [ADR-0004-suites-page-homepage-route.md](./ADR-0004-suites-page-homepage-route.md)
+- `ADR-0005`: Multi-Suite Seeding for Debug Run Entry. Status: `Accepted`. Date: `2026-04-05`. File: [ADR-0005-multi-suite-seeding-for-debug-runs.md](./ADR-0005-multi-suite-seeding-for-debug-runs.md)
 
 ## Reference Reading
 

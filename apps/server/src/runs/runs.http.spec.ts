@@ -145,6 +145,8 @@ async function createFakeRunnerWorkspace(workspaceRoot: string) {
         private: true,
         scripts: {
           'test:smoke:platform': 'node fake-runner.mjs',
+          'test:smoke:platform:with-30-second-case': 'node fake-runner.mjs',
+          'test:smoke:platform:with-failure': 'node fake-runner.mjs',
         },
       },
       null,
@@ -510,6 +512,18 @@ void test('GET /api/suites returns the seeded smoke suite', async (testContext) 
       id: 1,
       suite_name: 'demo-smoke',
       command: 'npm run test:smoke:platform',
+      sut_base_url: 'http://localhost:3000',
+    },
+    {
+      id: 2,
+      suite_name: 'demo-smoke-30-second-case',
+      command: 'npm run test:smoke:platform:with-30-second-case',
+      sut_base_url: 'http://localhost:3000',
+    },
+    {
+      id: 3,
+      suite_name: 'demo-smoke-with-failure',
+      command: 'npm run test:smoke:platform:with-failure',
       sut_base_url: 'http://localhost:3000',
     },
   ]);
