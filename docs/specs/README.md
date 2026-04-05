@@ -36,3 +36,6 @@ This directory stores feature-level planning assets extracted from
 - [`004-run-detail-page/`](./004-run-detail-page/): read-only `/runs/:id` page,
   backward-compatible run-detail result summary, and observation-first detail
   rendering.
+- [`005-suites-page/`](./005-suites-page/): frontend `/suites` homepage,
+  minimal suites API expansion for suite context, and lightweight
+  same-page run creation feedback.

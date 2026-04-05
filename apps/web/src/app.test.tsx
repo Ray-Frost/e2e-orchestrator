@@ -1,7 +1,14 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import App from './app';
+
+type SuiteSummaryResponse = {
+  id: number;
+  suite_name: string;
+  command: string;
+  sut_base_url: string;
+};
 
 type RunDetailResponse = {
   id: number;
@@ -46,6 +53,18 @@ function createJsonResponse(body: unknown, status = 200) {
       'Content-Type': 'application/json',
     },
   });
+}
+
+function createSuiteSummaryResponse(
+  overrides: Partial<SuiteSummaryResponse> = {},
+): SuiteSummaryResponse {
+  return {
+    id: 1,
+    suite_name: 'demo-smoke',
+    command: 'npm run test:smoke:platform',
+    sut_base_url: 'http://localhost:3000',
+    ...overrides,
+  };
 }
 
 function createRunDetailResponse(
@@ -127,6 +146,34 @@ function createDeferredPromise<Value>() {
   };
 }
 
+async function findSuiteCard(suiteName: string) {
+  const suiteHeading = await screen.findByText(suiteName);
+  const suiteCard = suiteHeading.closest('article');
+
+  expect(suiteCard).not.toBeNull();
+
+  return suiteCard!;
+}
+
+function expectCreateRunRequest(
+  fetchMock: ReturnType<typeof vi.fn>,
+  requestIndex: number,
+  suiteId: number,
+) {
+  const requestCall = fetchMock.mock.calls[requestIndex];
+
+  expect(requestCall?.[0]).toBe('/api/runs');
+  expect(requestCall?.[1]).toEqual({
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      suite_id: suiteId,
+    }),
+  });
+}
+
 beforeEach(() => {
   window.history.pushState({}, '', '/statistics/failures');
 });
@@ -135,6 +182,258 @@ afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+});
+
+test('redirects / to /suites', async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValue(createJsonResponse([createSuiteSummaryResponse()]));
+
+  vi.stubGlobal('fetch', fetchMock);
+
+  renderAppAtRoute('/');
+
+  expect(await screen.findByRole('heading', { name: 'Suites' })).toBeVisible();
+  expect(window.location.pathname).toBe('/suites');
+  expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/suites');
+});
+
+test('redirects unknown routes to /suites and loads the suites page', async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValue(createJsonResponse([createSuiteSummaryResponse()]));
+
+  vi.stubGlobal('fetch', fetchMock);
+
+  renderAppAtRoute('/does-not-exist');
+
+  expect(await screen.findByRole('heading', { name: 'Suites' })).toBeVisible();
+  expect(await screen.findByText('demo-smoke')).toBeInTheDocument();
+  expect(window.location.pathname).toBe('/suites');
+  expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/suites');
+});
+
+test('shows a loading state while suites load', async () => {
+  const fetchMock = vi.fn().mockReturnValue(new Promise<Response>(() => {}));
+
+  vi.stubGlobal('fetch', fetchMock);
+
+  renderAppAtRoute('/suites');
+
+  expect(await screen.findByRole('heading', { name: 'Suites' })).toBeVisible();
+  expect(screen.getByText('Loading suites...')).toBeInTheDocument();
+  expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/suites');
+});
+
+test('renders an empty state when the suites API returns no entries', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(createJsonResponse([])));
+
+  renderAppAtRoute('/suites');
+
+  expect(
+    await screen.findByText('No runnable suites are configured yet.'),
+  ).toBeInTheDocument();
+});
+
+test('renders the backend error message when the suites request fails', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue(
+      createJsonResponse(
+        {
+          error: {
+            message: 'Failed to load suites.',
+          },
+        },
+        500,
+      ),
+    ),
+  );
+
+  renderAppAtRoute('/suites');
+
+  expect(await screen.findByText('Failed to load suites.')).toBeInTheDocument();
+});
+
+test('renders ready suites cards with suite context fields', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue(
+      createJsonResponse([
+        createSuiteSummaryResponse(),
+        createSuiteSummaryResponse({
+          id: 2,
+          suite_name: 'checkout-smoke',
+          command: 'pnpm run test:checkout',
+          sut_base_url: 'http://localhost:4100',
+        }),
+      ]),
+    ),
+  );
+
+  renderAppAtRoute('/suites');
+
+  const demoSmokeCard = await findSuiteCard('demo-smoke');
+  const checkoutSmokeCard = await findSuiteCard('checkout-smoke');
+
+  expect(
+    within(demoSmokeCard).getByText('npm run test:smoke:platform'),
+  ).toBeInTheDocument();
+  expect(
+    within(demoSmokeCard).getByText('http://localhost:3000'),
+  ).toBeInTheDocument();
+  expect(
+    within(checkoutSmokeCard).getByText('pnpm run test:checkout'),
+  ).toBeInTheDocument();
+  expect(
+    within(checkoutSmokeCard).getByText('http://localhost:4100'),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole('link', { name: 'Open failure statistics' }),
+  ).toHaveAttribute('href', '/statistics/failures');
+});
+
+test('loads failure statistics when the secondary suites navigation is clicked', async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(
+      createJsonResponse([createSuiteSummaryResponse({ suite_name: 'alpha' })]),
+    )
+    .mockResolvedValueOnce(
+      createJsonResponse([
+        {
+          test_lib_case_code: 'AUTH_LOGIN_INVALID_PASSWORD',
+          case_title: 'Shows an invalid password error with guidance',
+          fail_count: 2,
+          last_failed_at: '2026-03-20T12:00:00.000Z',
+          last_run_id: 12,
+        },
+      ]),
+    );
+
+  vi.stubGlobal('fetch', fetchMock);
+
+  renderAppAtRoute('/suites');
+
+  const user = userEvent.setup();
+
+  await user.click(
+    await screen.findByRole('link', { name: 'Open failure statistics' }),
+  );
+
+  expect(
+    await screen.findByRole('heading', { name: 'Failure statistics' }),
+  ).toBeInTheDocument();
+  expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/statistics/failures');
+});
+
+test('disables only the clicked suite action while create-run is in flight', async () => {
+  const createRunRequest = createDeferredPromise<Response>();
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(
+      createJsonResponse([
+        createSuiteSummaryResponse(),
+        createSuiteSummaryResponse({
+          id: 2,
+          suite_name: 'checkout-smoke',
+        }),
+      ]),
+    )
+    .mockReturnValueOnce(createRunRequest.promise);
+
+  vi.stubGlobal('fetch', fetchMock);
+
+  renderAppAtRoute('/suites');
+
+  const user = userEvent.setup();
+  const firstSuiteCard = await findSuiteCard('demo-smoke');
+  const secondSuiteCard = await findSuiteCard('checkout-smoke');
+
+  const firstButton = within(firstSuiteCard).getByRole('button', {
+    name: 'Run suite',
+  });
+  const secondButton = within(secondSuiteCard).getByRole('button', {
+    name: 'Run suite',
+  });
+
+  await user.click(firstButton);
+
+  expect(
+    within(firstSuiteCard).getByRole('button', { name: 'Running...' }),
+  ).toBeDisabled();
+  expect(secondButton).toBeEnabled();
+  expectCreateRunRequest(fetchMock, 1, 1);
+
+  createRunRequest.resolve(createJsonResponse({ id: 91 }));
+  await flushAsyncWork();
+});
+
+test('shows success feedback with a run-detail link and stays on /suites', async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(
+      createJsonResponse([createSuiteSummaryResponse({ suite_name: 'alpha' })]),
+    )
+    .mockResolvedValueOnce(createJsonResponse({ id: 91 }));
+
+  vi.stubGlobal('fetch', fetchMock);
+
+  renderAppAtRoute('/suites');
+
+  const user = userEvent.setup();
+  const suiteCard = await findSuiteCard('alpha');
+
+  await user.click(
+    within(suiteCard).getByRole('button', { name: 'Run suite' }),
+  );
+
+  expectCreateRunRequest(fetchMock, 1, 1);
+  expect(await screen.findByText(/Run 91 created\./)).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Open run detail' })).toHaveAttribute(
+    'href',
+    '/runs/91',
+  );
+  expect(
+    within(suiteCard).getByRole('button', { name: 'Run suite' }),
+  ).toBeEnabled();
+  expect(window.location.pathname).toBe('/suites');
+});
+
+test('shows create-run errors and restores the suite action for retry', async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(createJsonResponse([createSuiteSummaryResponse()]))
+    .mockResolvedValueOnce(
+      createJsonResponse(
+        {
+          error: {
+            message: 'Suite 1 could not be scheduled.',
+          },
+        },
+        500,
+      ),
+    );
+
+  vi.stubGlobal('fetch', fetchMock);
+
+  renderAppAtRoute('/suites');
+
+  const user = userEvent.setup();
+  const suiteCard = await findSuiteCard('demo-smoke');
+
+  await user.click(
+    within(suiteCard).getByRole('button', { name: 'Run suite' }),
+  );
+
+  expectCreateRunRequest(fetchMock, 1, 1);
+  expect(
+    await screen.findByText('Suite 1 could not be scheduled.'),
+  ).toBeInTheDocument();
+  expect(
+    within(suiteCard).getByRole('button', { name: 'Run suite' }),
+  ).toBeEnabled();
+  expect(screen.queryByRole('button', { name: 'Running...' })).toBeNull();
 });
 
 test('shows a loading state while failure statistics load', async () => {

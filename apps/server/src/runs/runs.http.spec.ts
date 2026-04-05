@@ -27,6 +27,8 @@ import { SmokeRunConfigService } from './smoke-run-config';
 interface SuiteSummaryResponse {
   id: number;
   suite_name: string;
+  command: string;
+  sut_base_url: string;
 }
 
 interface RunSummaryResponse {
@@ -405,6 +407,8 @@ void test('GET /api/suites returns the seeded smoke suite', async (testContext) 
     {
       id: 1,
       suite_name: 'demo-smoke',
+      command: 'npm run test:smoke:platform',
+      sut_base_url: 'http://localhost:3000',
     },
   ]);
 });
