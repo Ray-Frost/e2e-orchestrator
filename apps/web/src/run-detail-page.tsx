@@ -1,5 +1,6 @@
 import { startTransition, useEffect, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { readApiErrorMessage } from './api-error';
 import { failureStatisticsRoute } from './operator-navigation';
 
 export const runDetailRoutePattern = '/runs/:id';
@@ -53,12 +54,6 @@ type RunDetail = {
   result_summary: RunResultSummary | null;
 };
 
-type RunDetailErrorResponse = {
-  error: {
-    message: string;
-  };
-};
-
 type RunDetailPageState =
   | {
       status: 'loading';
@@ -84,37 +79,6 @@ type DetailField = {
   value: ReactNode;
   valueClassName?: string;
 };
-
-function isRunDetailErrorResponse(
-  value: unknown,
-): value is RunDetailErrorResponse {
-  if (typeof value !== 'object' || value === null || !('error' in value)) {
-    return false;
-  }
-
-  const errorValue = value.error;
-
-  return (
-    typeof errorValue === 'object' &&
-    errorValue !== null &&
-    'message' in errorValue &&
-    typeof errorValue.message === 'string'
-  );
-}
-
-async function readRunDetailErrorMessage(response: Response) {
-  try {
-    const responseBody = (await response.json()) as unknown;
-
-    if (isRunDetailErrorResponse(responseBody)) {
-      return responseBody.error.message;
-    }
-  } catch {
-    return defaultRunDetailErrorMessage;
-  }
-
-  return defaultRunDetailErrorMessage;
-}
 
 function isPositiveInteger(value: string | undefined): value is string {
   return value !== undefined && /^[1-9][0-9]*$/.test(value);
@@ -450,7 +414,10 @@ export function RunDetailPage() {
         });
 
         if (response.status === 404) {
-          const message = await readRunDetailErrorMessage(response);
+          const message = await readApiErrorMessage(
+            response,
+            defaultRunDetailErrorMessage,
+          );
 
           if (abortController.signal.aborted) {
             return;
@@ -467,7 +434,9 @@ export function RunDetailPage() {
         }
 
         if (!response.ok) {
-          throw new Error(await readRunDetailErrorMessage(response));
+          throw new Error(
+            await readApiErrorMessage(response, defaultRunDetailErrorMessage),
+          );
         }
 
         const responseBody = normalizeRunDetail(

@@ -1,5 +1,6 @@
 import { startTransition, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { readApiErrorMessage } from './api-error';
 import { OperatorNavigation } from './operator-navigation';
 
 const runsApiPath = '/api/runs';
@@ -45,41 +46,6 @@ type RunsPageState =
       status: 'ready';
       runs: RunSummary[];
     };
-
-type RunsErrorResponse = {
-  error: {
-    message: string;
-  };
-};
-
-function isRunsErrorResponse(value: unknown): value is RunsErrorResponse {
-  if (typeof value !== 'object' || value === null || !('error' in value)) {
-    return false;
-  }
-
-  const errorValue = value.error;
-
-  return (
-    typeof errorValue === 'object' &&
-    errorValue !== null &&
-    'message' in errorValue &&
-    typeof errorValue.message === 'string'
-  );
-}
-
-async function readRunsErrorMessage(response: Response) {
-  try {
-    const responseBody = (await response.json()) as unknown;
-
-    if (isRunsErrorResponse(responseBody)) {
-      return responseBody.error.message;
-    }
-  } catch {
-    return defaultRunsErrorMessage;
-  }
-
-  return defaultRunsErrorMessage;
-}
 
 function shouldPollRunStatus(status: RunStatus) {
   return status === 'pending' || status === 'running';
@@ -172,7 +138,9 @@ export function RunsPage() {
         });
 
         if (!response.ok) {
-          throw new Error(await readRunsErrorMessage(response));
+          throw new Error(
+            await readApiErrorMessage(response, defaultRunsErrorMessage),
+          );
         }
 
         const responseBody = (await response.json()) as RunSummary[];

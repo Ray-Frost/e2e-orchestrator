@@ -1,5 +1,6 @@
 import { startTransition, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { readApiErrorMessage } from './api-error';
 import { OperatorNavigation } from './operator-navigation';
 
 const suitesApiPath = '/api/suites';
@@ -12,12 +13,6 @@ type SuiteSummary = {
   suite_name: string;
   command: string;
   sut_base_url: string;
-};
-
-type ErrorResponse = {
-  error: {
-    message: string;
-  };
 };
 
 type CreateRunResponse = {
@@ -47,35 +42,6 @@ type RunFeedback =
       message: string;
     };
 
-function isErrorResponse(value: unknown): value is ErrorResponse {
-  if (typeof value !== 'object' || value === null || !('error' in value)) {
-    return false;
-  }
-
-  const errorValue = value.error;
-
-  return (
-    typeof errorValue === 'object' &&
-    errorValue !== null &&
-    'message' in errorValue &&
-    typeof errorValue.message === 'string'
-  );
-}
-
-async function readErrorMessage(response: Response, fallbackMessage: string) {
-  try {
-    const responseBody = (await response.json()) as unknown;
-
-    if (isErrorResponse(responseBody)) {
-      return responseBody.error.message;
-    }
-  } catch {
-    return fallbackMessage;
-  }
-
-  return fallbackMessage;
-}
-
 function removeSuiteId(suiteIds: number[], suiteIdToRemove: number): number[] {
   return suiteIds.filter((suiteId) => suiteId !== suiteIdToRemove);
 }
@@ -100,7 +66,7 @@ export function SuitesPage() {
 
         if (!response.ok) {
           throw new Error(
-            await readErrorMessage(response, defaultSuitesErrorMessage),
+            await readApiErrorMessage(response, defaultSuitesErrorMessage),
           );
         }
 
@@ -163,7 +129,7 @@ export function SuitesPage() {
 
       if (!response.ok) {
         throw new Error(
-          await readErrorMessage(response, defaultCreateRunErrorMessage),
+          await readApiErrorMessage(response, defaultCreateRunErrorMessage),
         );
       }
 
