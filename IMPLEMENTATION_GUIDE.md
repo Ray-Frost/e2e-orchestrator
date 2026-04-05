@@ -9,6 +9,7 @@
 - [`docs/specs/002-failure-statistics/`](./docs/specs/002-failure-statistics/)
 - [`docs/specs/003-external-smoke-run-loop/`](./docs/specs/003-external-smoke-run-loop/)
 - [`docs/specs/004-run-detail-page/`](./docs/specs/004-run-detail-page/)
+- [`docs/specs/005-suites-page/`](./docs/specs/005-suites-page/)
 
 ## 2. 平台边界
 
@@ -52,6 +53,9 @@
 - run 详情页、`GET /api/runs/{id}` 的 `result_summary` 扩展、以及
   `artifacts` 的 availability-only 呈现见
   [`004-run-detail-page`](./docs/specs/004-run-detail-page/).
+- suites 首页、`GET /api/suites` 的最小展示字段扩展、以及同页
+  create-run 反馈见
+  [`005-suites-page`](./docs/specs/005-suites-page/).
 
 ## 6. API 约定
 
