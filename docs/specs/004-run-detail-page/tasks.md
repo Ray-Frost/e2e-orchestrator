@@ -27,7 +27,13 @@ Companion docs: [`spec.md`](./spec.md), [`plan.md`](./plan.md)
    Validation: frontend tests cover unavailable timing fields, artifact
    availability-only rendering, and summary-present versus summary-absent
    states.
-5. Re-run the documented verification commands and compare the implementation to
+5. Update `IMPLEMENTATION_GUIDE.md` so migrated run-detail content points at the
+   `004-run-detail-page` spec directory and no longer duplicates the run-detail
+   contract now owned by this slice.
+   Validation: the guide lists `004-run-detail-page` in its migration entry and
+   keeps only a short pointer instead of repeating the run-detail feature
+   detail.
+6. Re-run the documented verification commands and compare the implementation to
    `spec.md`.
    Validation: the delivered behavior matches the locked slice and does not add
    logs viewing, report navigation, artifact download, or a full case-results
