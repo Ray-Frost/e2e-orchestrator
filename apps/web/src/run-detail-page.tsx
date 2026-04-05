@@ -415,6 +415,7 @@ export function RunDetailPage() {
       return;
     }
 
+    const validatedRunId = runId;
     const abortController = new AbortController();
     let pollingTimeoutId: number | null = null;
     let lastObservedRunDetail: RunDetail | null = null;
@@ -442,7 +443,7 @@ export function RunDetailPage() {
     async function loadRunDetail() {
       try {
         const responseBody = await fetchRunDetail(
-          runId,
+          validatedRunId,
           abortController.signal,
         );
 
