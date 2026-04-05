@@ -1,6 +1,6 @@
 import { startTransition, useEffect, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { failureStatisticsRoute } from './failure-statistics-page';
+import { failureStatisticsRoute } from './operator-navigation';
 
 export const runDetailRoutePattern = '/runs/:id';
 

@@ -1,7 +1,6 @@
 import { startTransition, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-
-export const failureStatisticsRoute = '/statistics/failures';
+import { OperatorNavigation } from './operator-navigation';
 
 const failureStatisticsApiPath = '/api/statistics/failures';
 const defaultFailureStatisticsErrorMessage =
@@ -130,6 +129,7 @@ export function FailureStatisticsPage() {
   return (
     <main className="app-shell">
       <header className="page-header">
+        <OperatorNavigation />
         <p className="page-eyebrow">Statistics</p>
         <h1>Failure statistics</h1>
         <p className="page-summary">

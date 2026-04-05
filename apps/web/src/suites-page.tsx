@@ -1,8 +1,6 @@
 import { startTransition, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { failureStatisticsRoute } from './failure-statistics-page';
-
-export const suitesRoute = '/suites';
+import { OperatorNavigation } from './operator-navigation';
 
 const suitesApiPath = '/api/suites';
 const createRunApiPath = '/api/runs';
@@ -205,15 +203,13 @@ export function SuitesPage() {
   return (
     <main className="app-shell">
       <header className="page-header">
+        <OperatorNavigation />
         <p className="page-eyebrow">Run Entry</p>
         <h1>Suites</h1>
         <p className="page-summary">
           Start a configured suite from one stable entry surface, then jump into
           run detail only when you need deeper inspection.
         </p>
-        <Link className="page-link-inline" to={failureStatisticsRoute}>
-          Open failure statistics
-        </Link>
       </header>
       {pageState.status === 'loading' ? (
         <section className="status-panel">
