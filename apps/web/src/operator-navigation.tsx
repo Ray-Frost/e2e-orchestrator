@@ -7,14 +7,17 @@ export const failureStatisticsRoute = '/statistics/failures';
 const operatorPages = [
   {
     label: 'Suites',
+    end: true,
     to: suitesRoute,
   },
   {
     label: 'Runs',
+    end: false,
     to: runsRoute,
   },
   {
     label: 'Failure statistics',
+    end: true,
     to: failureStatisticsRoute,
   },
 ];
@@ -29,7 +32,7 @@ export function OperatorNavigation() {
               ? 'operator-nav-link operator-nav-link-active'
               : 'operator-nav-link'
           }
-          end
+          end={operatorPage.end}
           key={operatorPage.to}
           to={operatorPage.to}
         >

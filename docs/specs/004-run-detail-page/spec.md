@@ -24,6 +24,8 @@ Companion docs: [`plan.md`](./plan.md), [`tasks.md`](./tasks.md)
 ## Scope
 
 - Frontend `/runs/:id` page.
+- Shared operator navigation on the detail page, with `/runs/:id` treated as
+  part of the `Runs` section.
 - Existing backend `GET /api/runs/{id}` plus a backward-compatible
   summary-only result extension for this page.
 - Loading, not-found, generic-error, and ready states for the route.
@@ -81,6 +83,10 @@ Companion docs: [`plan.md`](./plan.md), [`tasks.md`](./tasks.md)
 
 - The `/runs/:id` route loads run detail from the backend using the local `/api`
   proxy in local dev and preview.
+- The page renders the shared operator navigation so `/suites`, `/runs`, and
+  `/statistics/failures` remain directly reachable.
+- The shared navigation treats `/runs/:id` as part of the `Runs` section, so
+  `Runs` stays highlighted on the detail route.
 - The page shows loading, not-found, generic-error, and populated states.
 - The page presents the run as an observation-first detail view, not as a
   control panel.
@@ -102,6 +108,8 @@ Companion docs: [`plan.md`](./plan.md), [`tasks.md`](./tasks.md)
 
 - Navigating to `/runs/:id` shows a real run detail page instead of the current
   placeholder route.
+- The detail page renders the shared operator navigation and keeps `Runs`
+  highlighted on `/runs/:id`.
 - `GET /api/runs/{id}` preserves its existing fields and adds the locked
   `result_summary` contract without breaking existing consumers.
 - Runs with persisted `case_results` return the expected summary counts.

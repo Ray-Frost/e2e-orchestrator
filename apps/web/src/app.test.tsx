@@ -871,10 +871,54 @@ test('loads a real run detail page when a run link is clicked', async () => {
   expect(
     await screen.findByRole('heading', { name: 'Run 12' }),
   ).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Suites' })).toHaveAttribute(
+    'href',
+    '/suites',
+  );
+  expect(screen.getByRole('link', { name: 'Runs' })).toHaveAttribute(
+    'href',
+    '/runs',
+  );
+  expect(
+    screen.getByRole('link', { name: 'Failure statistics' }),
+  ).toHaveAttribute('href', '/statistics/failures');
+  expect(screen.getByRole('link', { name: 'Runs' })).toHaveClass(
+    'operator-nav-link-active',
+  );
+  expect(
+    screen.queryByRole('link', { name: 'Back to failure statistics' }),
+  ).not.toBeInTheDocument();
   expect(screen.getByText('Overview')).toBeInTheDocument();
   expect(
     screen.queryByText('Run details are not implemented yet.'),
   ).not.toBeInTheDocument();
+});
+
+test('navigates from run detail to the runs page through the shared nav', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(createRunDetailResponse()))
+      .mockResolvedValueOnce(
+        createJsonResponse([createRunSummaryResponse({ id: 18 })]),
+      ),
+  );
+
+  renderAppAtRoute('/runs/18');
+
+  const user = userEvent.setup();
+
+  expect(
+    await screen.findByRole('heading', { name: 'Run 18' }),
+  ).toBeInTheDocument();
+
+  await user.click(screen.getByRole('link', { name: 'Runs' }));
+
+  expect(
+    await screen.findByRole('heading', { name: 'Runs' }),
+  ).toBeInTheDocument();
+  expect(window.location.pathname).toBe('/runs');
 });
 
 test('shows a loading state while run detail loads', async () => {

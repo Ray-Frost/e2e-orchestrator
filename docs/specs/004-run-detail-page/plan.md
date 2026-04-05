@@ -15,10 +15,13 @@ Companion docs: [`spec.md`](./spec.md), [`tasks.md`](./tasks.md)
 - Add a dedicated `apps/web/src/run-detail-page.tsx` page module that mirrors
   the current frontend fetch/state style used by
   `apps/web/src/failure-statistics-page.tsx`, but adapts it to route params,
-  run-detail states, and active-run polling.
+  run-detail states, shared operator navigation, and active-run polling.
 - Keep the page observation-first: overview, timing, execution context,
   artifacts, and summary-only result data. Do not turn this slice into a logs
   viewer, report launcher, or results browser.
+- Treat `/runs/:id` as part of the `Runs` top-level section in the shared
+  operator navigation instead of implying a single parent route back to failure
+  statistics.
 - Keep the `Artifacts` section non-interactive in this slice. Show availability
   status only, so the page stays aligned with current backend capability and
   avoids fake controls. Treat this as a sequencing decision for `004`, not as a
@@ -106,6 +109,8 @@ Companion docs: [`spec.md`](./spec.md), [`tasks.md`](./tasks.md)
     lifecycle or timed out before ingest;
   - preservation of existing detail fields while adding `result_summary`.
 - Extend frontend route tests to cover:
+  - shared operator navigation on `/runs/:id`;
+  - `Runs` highlighted on `/runs/:id`;
   - loading state;
   - not-found state;
   - generic error state;

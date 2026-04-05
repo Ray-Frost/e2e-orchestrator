@@ -1,7 +1,7 @@
 import { startTransition, useEffect, useState, type ReactNode } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { readApiErrorMessage } from './api-error';
-import { failureStatisticsRoute } from './operator-navigation';
+import { OperatorNavigation } from './operator-navigation';
 
 export const runDetailRoutePattern = '/runs/:id';
 
@@ -504,15 +504,13 @@ export function RunDetailPage() {
   return (
     <main className="app-shell">
       <header className="page-header">
+        <OperatorNavigation />
         <p className="page-eyebrow">Runs</p>
         <h1>{`Run ${routeRunId}`}</h1>
         <p className="page-summary">
           Read-only detail for one recorded run, focused on observation instead
           of control actions.
         </p>
-        <Link className="run-link page-link-inline" to={failureStatisticsRoute}>
-          Back to failure statistics
-        </Link>
       </header>
       {pageState.status === 'loading' || !isCurrentRouteState ? (
         <section className="status-panel">
