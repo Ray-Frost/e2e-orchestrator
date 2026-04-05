@@ -11,6 +11,7 @@
 - [`docs/specs/004-run-detail-page/`](./docs/specs/004-run-detail-page/)
 - [`docs/specs/005-suites-page/`](./docs/specs/005-suites-page/)
 - [`docs/specs/006-runs-page/`](./docs/specs/006-runs-page/)
+- [`docs/specs/007-run-cancel/`](./docs/specs/007-run-cancel/)
 
 ## 2. 平台边界
 
@@ -40,6 +41,7 @@
   - `runner_exit_nonzero`
   - `parse_or_write_error`
 - `timeout` 使用 `reason=timeout_exceeded`。
+- `cancelled` 使用 `reason=user_cancelled`。
 - `duration_ms` 仅在 `start_time` 和 `end_time` 都存在时写入。
 
 ## 5. 迁移入口
@@ -60,6 +62,9 @@
 - runs 列表页、`GET /api/runs` 驱动的只读运营视图、以及运行中列表的
   低并发自动轮询见
   [`006-runs-page`](./docs/specs/006-runs-page/).
+- run cancel API、`pending` / `running` 的取消语义、以及 `/runs` /
+  `/runs/:id` 的取消入口见
+  [`007-run-cancel`](./docs/specs/007-run-cancel/).
 
 ## 6. API 约定
 
@@ -67,6 +72,7 @@
 - `POST /api/runs`
 - `GET /api/runs`
 - `GET /api/runs/{id}`
+- `POST /api/runs/{id}/cancel`
 - `GET /api/statistics/failures`
 
 统一错误体：
@@ -91,10 +97,8 @@
 
 1. 排障链路：服务端日志与 `meta.json` 使用单一 `id` 语义；如需
    资源上下文，使用 `run_id` / `suite_id` 命名。
-2. 取消接口：请求体必须为空，不接收客户端自定义 `reason`；服务端
-   固定 `reason=user_cancelled`。终态取消返回 `400`，保持统一错误
-   体，`error.message` 仅返回可读文案（不携带 `status/reason`
-   结构化片段）。
+2. run cancel 能力已迁移到
+   [`007-run-cancel`](./docs/specs/007-run-cancel/).
 3. logs 接口（MVP）：`GET /api/runs/{id}/logs/stdout`，返回
    `lines(string[])`、`next_cursor`、`has_more`；`cursor` 为字节偏移
    整数。后续可扩展 `/logs/stderr`。
