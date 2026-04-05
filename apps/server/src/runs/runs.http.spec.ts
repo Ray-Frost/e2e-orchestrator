@@ -5,6 +5,7 @@ import {
   type ServerResponse,
 } from 'node:http';
 import {
+  access,
   mkdtemp,
   readFile,
   readdir,
@@ -20,7 +21,10 @@ import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../app.module';
-import { ARTIFACTS_ROOT_PATH } from './artifact-persistence/artifact-paths';
+import {
+  ARTIFACTS_ROOT_PATH,
+  resolveRunArtifactPaths,
+} from './artifact-persistence/artifact-paths';
 import { PrismaService } from '../prisma/prisma.service';
 import { SmokeRunConfigService } from './smoke-run-config';
 
@@ -132,6 +136,7 @@ async function createFakeRunnerWorkspace(workspaceRoot: string) {
   await mkdir(cwd, { recursive: true });
 
   const fakeRunnerScriptPath = path.join(cwd, 'fake-runner.mjs');
+  const fakeRunnerChildScriptPath = path.join(cwd, 'fake-runner-child.mjs');
   await writeFile(
     path.join(cwd, 'package.json'),
     JSON.stringify(
@@ -149,8 +154,33 @@ async function createFakeRunnerWorkspace(workspaceRoot: string) {
   );
 
   await writeFile(
+    fakeRunnerChildScriptPath,
+    `
+      import { writeFile } from 'node:fs/promises';
+
+      const readyPath = process.env.FAKE_CHILD_READY_PATH;
+      const markerPath = process.env.FAKE_CHILD_MARKER_PATH;
+      const markerDelayMs = Number(process.env.FAKE_CHILD_MARKER_DELAY_MS ?? '750');
+
+      if (readyPath) {
+        await writeFile(readyPath, 'ready', 'utf8');
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, markerDelayMs));
+
+      if (markerPath) {
+        await writeFile(markerPath, 'child-survived', 'utf8');
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 5_000));
+    `,
+    'utf8',
+  );
+
+  await writeFile(
     fakeRunnerScriptPath,
     `
+      import { spawn } from 'node:child_process';
       import { mkdir, writeFile } from 'node:fs/promises';
 
       const mode = process.env.FAKE_RUNNER_MODE ?? 'success';
@@ -158,6 +188,7 @@ async function createFakeRunnerWorkspace(workspaceRoot: string) {
       const reportDir = process.env.E2E_PLAYWRIGHT_REPORT_DIR;
       const testResultsDir = process.env.E2E_TEST_RESULTS_DIR;
       const delayMs = Number(process.env.FAKE_RUNNER_DELAY_MS ?? '0');
+      const childScriptPath = ${JSON.stringify(fakeRunnerChildScriptPath)};
 
       process.stdout.write((process.env.FAKE_RUNNER_STDOUT_TEXT ?? 'fake runner stdout') + '\\n');
       process.stderr.write((process.env.FAKE_RUNNER_STDERR_TEXT ?? 'fake runner stderr') + '\\n');
@@ -167,6 +198,15 @@ async function createFakeRunnerWorkspace(workspaceRoot: string) {
       }
 
       if (mode === 'slow') {
+        await new Promise((resolve) => setTimeout(resolve, 5_000));
+      }
+
+      if (mode === 'child-process') {
+        const spawnedChildProcess = spawn(process.execPath, [childScriptPath], {
+          env: process.env,
+          stdio: 'ignore',
+        });
+        spawnedChildProcess.unref();
         await new Promise((resolve) => setTimeout(resolve, 5_000));
       }
 
@@ -261,6 +301,8 @@ async function createRunsHttpHarness(
   const sandboxRoot = await mkdtemp(path.join(os.tmpdir(), 'runs-http-'));
   const databasePath = path.join(sandboxRoot, 'runs.sqlite');
   const databaseUrl = `file:${databasePath}`;
+  const childReadyPath = path.join(sandboxRoot, 'child-ready.txt');
+  const childMarkerPath = path.join(sandboxRoot, 'child-marker.txt');
   const prismaClient = new PrismaService({
     datasources: {
       db: {
@@ -292,6 +334,9 @@ async function createRunsHttpHarness(
     FAKE_RUNNER_DELAY_MS: process.env.FAKE_RUNNER_DELAY_MS,
     FAKE_RUNNER_STDOUT_TEXT: process.env.FAKE_RUNNER_STDOUT_TEXT,
     FAKE_RUNNER_STDERR_TEXT: process.env.FAKE_RUNNER_STDERR_TEXT,
+    FAKE_CHILD_READY_PATH: process.env.FAKE_CHILD_READY_PATH,
+    FAKE_CHILD_MARKER_PATH: process.env.FAKE_CHILD_MARKER_PATH,
+    FAKE_CHILD_MARKER_DELAY_MS: process.env.FAKE_CHILD_MARKER_DELAY_MS,
   };
 
   process.env.FAKE_RUNNER_MODE = options.runnerMode ?? 'success';
@@ -301,6 +346,9 @@ async function createRunsHttpHarness(
       : String(options.runnerDelayMs);
   process.env.FAKE_RUNNER_STDOUT_TEXT = 'runner stdout';
   process.env.FAKE_RUNNER_STDERR_TEXT = 'runner stderr';
+  process.env.FAKE_CHILD_READY_PATH = childReadyPath;
+  process.env.FAKE_CHILD_MARKER_PATH = childMarkerPath;
+  process.env.FAKE_CHILD_MARKER_DELAY_MS = '750';
 
   await rm(ARTIFACTS_ROOT_PATH, { force: true, recursive: true });
 
@@ -315,6 +363,10 @@ async function createRunsHttpHarness(
     process.env.FAKE_RUNNER_DELAY_MS = originalEnv.FAKE_RUNNER_DELAY_MS;
     process.env.FAKE_RUNNER_STDOUT_TEXT = originalEnv.FAKE_RUNNER_STDOUT_TEXT;
     process.env.FAKE_RUNNER_STDERR_TEXT = originalEnv.FAKE_RUNNER_STDERR_TEXT;
+    process.env.FAKE_CHILD_READY_PATH = originalEnv.FAKE_CHILD_READY_PATH;
+    process.env.FAKE_CHILD_MARKER_PATH = originalEnv.FAKE_CHILD_MARKER_PATH;
+    process.env.FAKE_CHILD_MARKER_DELAY_MS =
+      originalEnv.FAKE_CHILD_MARKER_DELAY_MS;
   });
 
   await initializeTestDatabaseSchema(prismaClient);
@@ -340,8 +392,19 @@ async function createRunsHttpHarness(
 
   return {
     app,
+    childMarkerPath,
+    childReadyPath,
     prismaClient,
   };
+}
+
+async function pathExists(targetPath: string) {
+  try {
+    await access(targetPath);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function waitForRunToReachTerminalState(
@@ -373,6 +436,31 @@ async function waitForRunToReachTerminalState(
   throw new Error(`Run ${runId} did not reach a terminal state in time.`);
 }
 
+async function waitForRunToReachStatus(
+  prismaClient: PrismaClient,
+  runId: number,
+  expectedStatus: string,
+  timeoutMs: number,
+) {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeoutMs) {
+    const runRecord = await prismaClient.run.findUnique({
+      where: {
+        id: runId,
+      },
+    });
+
+    if (runRecord !== null && runRecord.status === expectedStatus) {
+      return runRecord;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+
+  throw new Error(`Run ${runId} did not reach ${expectedStatus} in time.`);
+}
+
 async function waitForRunToStayPending(
   prismaClient: PrismaClient,
   runId: number,
@@ -395,6 +483,20 @@ async function waitForRunToStayPending(
   }
 
   throw new Error(`Run ${runId} did not stay pending in time.`);
+}
+
+async function waitForPathToExist(targetPath: string, timeoutMs: number) {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeoutMs) {
+    if (await pathExists(targetPath)) {
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+
+  throw new Error(`Expected ${targetPath} to exist in time.`);
 }
 
 void test('GET /api/suites returns the seeded smoke suite', async (testContext) => {
@@ -682,6 +784,93 @@ void test('POST /api/runs rejects a missing request body with the locked 400 err
   });
 });
 
+void test('POST /api/runs/{id}/cancel rejects invalid path input with the locked 400 error shape', async (testContext) => {
+  const { app } = await createRunsHttpHarness(testContext);
+
+  const response = await createHttpRequest(app).post(
+    '/api/runs/not-a-number/cancel',
+  );
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(response.body, {
+    error: {
+      message: 'id must be a positive integer.',
+    },
+  });
+});
+
+void test('POST /api/runs/{id}/cancel rejects a non-empty request body', async (testContext) => {
+  const { app, prismaClient } = await createRunsHttpHarness(testContext);
+
+  const pendingRun = await prismaClient.run.create({
+    data: {
+      suite_id: 1,
+      suite_name_snapshot: 'demo-smoke',
+      status: 'pending',
+      command: 'npm run test:smoke:platform',
+      cwd: '/tmp/demo-test-lib',
+      sut_base_url: 'http://localhost:3000',
+      probe_url: 'http://localhost:3000/',
+    },
+  });
+
+  const response = await createHttpRequest(app)
+    .post(`/api/runs/${pendingRun.id}/cancel`)
+    .send({ reason: 'user_cancelled' });
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(response.body, {
+    error: {
+      message: 'Request body must be empty.',
+    },
+  });
+});
+
+void test('POST /api/runs/{id}/cancel returns 404 for a missing run', async (testContext) => {
+  const { app } = await createRunsHttpHarness(testContext);
+
+  const response = await createHttpRequest(app).post('/api/runs/9999/cancel');
+
+  assert.equal(response.status, 404);
+  assert.deepEqual(response.body, {
+    error: {
+      message: 'Run 9999 was not found.',
+    },
+  });
+});
+
+void test('POST /api/runs/{id}/cancel rejects terminal runs with 400', async (testContext) => {
+  const { app, prismaClient } = await createRunsHttpHarness(testContext);
+
+  const terminalRun = await prismaClient.run.create({
+    data: {
+      suite_id: 1,
+      suite_name_snapshot: 'demo-smoke',
+      status: 'success',
+      reason: null,
+      exit_code: 0,
+      start_time: new Date('2026-03-20T12:00:02.000Z'),
+      end_time: new Date('2026-03-20T12:00:07.000Z'),
+      duration_ms: 5_000,
+      command: 'npm run test:smoke:platform',
+      cwd: '/tmp/demo-test-lib',
+      sut_base_url: 'http://localhost:3000',
+      probe_url: 'http://localhost:3000/',
+    },
+  });
+
+  const response = await createHttpRequest(app).post(
+    `/api/runs/${terminalRun.id}/cancel`,
+  );
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(response.body, {
+    error: {
+      message: `Run ${terminalRun.id} can no longer be cancelled.`,
+    },
+  });
+});
+
 void test('POST /api/runs terminalizes probe failures without spawning the runner', async (testContext) => {
   const { app, prismaClient } = await createRunsHttpHarness(testContext, {
     probeStatus: 503,
@@ -890,4 +1079,104 @@ void test('POST /api/runs keeps the FIFO queue behind a single running slot', as
       firstTerminalRunRecord.end_time.getTime() <=
         secondTerminalRunRecord.start_time.getTime(),
   );
+});
+
+void test('POST /api/runs/{id}/cancel removes a pending run from the FIFO queue without creating artifacts', async (testContext) => {
+  const { app, prismaClient } = await createRunsHttpHarness(testContext, {
+    runnerMode: 'success',
+    runnerDelayMs: 75,
+  });
+
+  const suiteResponse = await createHttpRequest(app).get('/api/suites');
+  const suiteRows = readJsonBody<SuiteSummaryResponse[]>(suiteResponse);
+  const suiteId = suiteRows[0].id;
+
+  const firstCreateResponse = await createHttpRequest(app)
+    .post('/api/runs')
+    .send({ suite_id: suiteId });
+  const secondCreateResponse = await createHttpRequest(app)
+    .post('/api/runs')
+    .send({ suite_id: suiteId });
+
+  const firstCreatedRun = readJsonBody<RunSummaryResponse>(firstCreateResponse);
+  const secondCreatedRun =
+    readJsonBody<RunSummaryResponse>(secondCreateResponse);
+
+  await waitForRunToStayPending(prismaClient, secondCreatedRun.id, 150);
+
+  const cancelResponse = await createHttpRequest(app).post(
+    `/api/runs/${secondCreatedRun.id}/cancel`,
+  );
+  const cancelledRun = readJsonBody<RunSummaryResponse>(cancelResponse);
+
+  assert.equal(cancelResponse.status, 200);
+  assert.equal(cancelledRun.status, 'cancelled');
+  assert.equal(cancelledRun.reason, 'user_cancelled');
+  assert.equal(cancelledRun.exit_code, null);
+  assert.equal(cancelledRun.start_time, null);
+  assert.equal(cancelledRun.duration_ms, null);
+  assert.notEqual(cancelledRun.end_time, null);
+
+  await waitForRunToReachTerminalState(prismaClient, firstCreatedRun.id, 5000);
+
+  const cancelledRunRecord = await waitForRunToReachTerminalState(
+    prismaClient,
+    secondCreatedRun.id,
+    1000,
+  );
+
+  assert.equal(cancelledRunRecord.status, 'cancelled');
+  assert.equal(cancelledRunRecord.reason, 'user_cancelled');
+  assert.equal(cancelledRunRecord.start_time, null);
+  assert.equal(cancelledRunRecord.duration_ms, null);
+  assert.equal(
+    await pathExists(resolveRunArtifactPaths(secondCreatedRun.id).runRoot),
+    false,
+  );
+});
+
+void test('POST /api/runs/{id}/cancel stops the running process group and child processes', async (testContext) => {
+  const { app, childMarkerPath, childReadyPath, prismaClient } =
+    await createRunsHttpHarness(testContext, {
+      runnerMode: 'child-process',
+      timeoutMs: 5_000,
+    });
+
+  const suiteResponse = await createHttpRequest(app).get('/api/suites');
+  const suiteRows = readJsonBody<SuiteSummaryResponse[]>(suiteResponse);
+  const suiteId = suiteRows[0].id;
+
+  const createResponse = await createHttpRequest(app)
+    .post('/api/runs')
+    .send({ suite_id: suiteId });
+  const createdRun = readJsonBody<RunSummaryResponse>(createResponse);
+
+  await waitForRunToReachStatus(prismaClient, createdRun.id, 'running', 2000);
+  await waitForPathToExist(childReadyPath, 2_000);
+
+  const cancelResponse = await createHttpRequest(app).post(
+    `/api/runs/${createdRun.id}/cancel`,
+  );
+  const cancelledRun = readJsonBody<RunSummaryResponse>(cancelResponse);
+
+  assert.equal(cancelResponse.status, 200);
+  assert.equal(cancelledRun.status, 'cancelled');
+  assert.equal(cancelledRun.reason, 'user_cancelled');
+  assert.equal(cancelledRun.exit_code, null);
+
+  const terminalRunRecord = await waitForRunToReachTerminalState(
+    prismaClient,
+    createdRun.id,
+    3_000,
+  );
+
+  assert.equal(terminalRunRecord.status, 'cancelled');
+  assert.equal(terminalRunRecord.reason, 'user_cancelled');
+  assert.notEqual(terminalRunRecord.start_time, null);
+  assert.notEqual(terminalRunRecord.end_time, null);
+  assert.notEqual(terminalRunRecord.duration_ms, null);
+
+  await new Promise((resolve) => setTimeout(resolve, 900));
+
+  assert.equal(await pathExists(childMarkerPath), false);
 });

@@ -5,6 +5,7 @@ import { OperatorNavigation } from './operator-navigation';
 
 const runsApiPath = '/api/runs';
 const defaultRunsErrorMessage = 'Failed to load runs.';
+const defaultCancelRunErrorMessage = 'Failed to cancel run.';
 const runsPollingIntervalMs = 2_000;
 const notRecordedForRunCopy = 'Not recorded for this run.';
 const availableAfterTerminalCopy =
@@ -46,6 +47,30 @@ type RunsPageState =
       status: 'ready';
       runs: RunSummary[];
     };
+
+type RunActionFeedback = {
+  status: 'error';
+  message: string;
+};
+
+function removeRunId(runIds: number[], runIdToRemove: number): number[] {
+  return runIds.filter((runId) => runId !== runIdToRemove);
+}
+
+async function fetchRuns(signal?: AbortSignal) {
+  const response = await fetch(
+    runsApiPath,
+    signal === undefined ? undefined : { signal },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await readApiErrorMessage(response, defaultRunsErrorMessage),
+    );
+  }
+
+  return (await response.json()) as RunSummary[];
+}
 
 function shouldPollRunStatus(status: RunStatus) {
   return status === 'pending' || status === 'running';
@@ -111,6 +136,10 @@ export function RunsPage() {
   const [pageState, setPageState] = useState<RunsPageState>({
     status: 'loading',
   });
+  const [cancellingRunIds, setCancellingRunIds] = useState<number[]>([]);
+  const [runFeedbackByRunId, setRunFeedbackByRunId] = useState<
+    Record<number, RunActionFeedback | undefined>
+  >({});
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -133,17 +162,7 @@ export function RunsPage() {
 
     async function loadRuns() {
       try {
-        const response = await fetch(runsApiPath, {
-          signal: abortController.signal,
-        });
-
-        if (!response.ok) {
-          throw new Error(
-            await readApiErrorMessage(response, defaultRunsErrorMessage),
-          );
-        }
-
-        const responseBody = (await response.json()) as RunSummary[];
+        const responseBody = await fetchRuns(abortController.signal);
 
         if (abortController.signal.aborted) {
           return;
@@ -194,6 +213,69 @@ export function RunsPage() {
     };
   }, []);
 
+  async function handleCancelRun(runId: number) {
+    if (cancellingRunIds.includes(runId)) {
+      return;
+    }
+
+    if (!window.confirm(`Cancel run ${runId}?`)) {
+      return;
+    }
+
+    setCancellingRunIds((currentRunIds) => [...currentRunIds, runId]);
+    setRunFeedbackByRunId((currentFeedbackByRunId) => ({
+      ...currentFeedbackByRunId,
+      [runId]: undefined,
+    }));
+
+    try {
+      const cancelResponse = await fetch(`/api/runs/${runId}/cancel`, {
+        method: 'POST',
+      });
+
+      if (!cancelResponse.ok) {
+        throw new Error(
+          await readApiErrorMessage(
+            cancelResponse,
+            defaultCancelRunErrorMessage,
+          ),
+        );
+      }
+
+      const refreshedRuns = await fetchRuns();
+
+      startTransition(() => {
+        setPageState({
+          status: 'ready',
+          runs: refreshedRuns,
+        });
+        setRunFeedbackByRunId((currentFeedbackByRunId) => ({
+          ...currentFeedbackByRunId,
+          [runId]: undefined,
+        }));
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : defaultCancelRunErrorMessage;
+
+      startTransition(() => {
+        setRunFeedbackByRunId((currentFeedbackByRunId) => ({
+          ...currentFeedbackByRunId,
+          [runId]: {
+            status: 'error',
+            message,
+          },
+        }));
+      });
+    } finally {
+      startTransition(() => {
+        setCancellingRunIds((currentRunIds) =>
+          removeRunId(currentRunIds, runId),
+        );
+      });
+    }
+  }
+
   const shouldShowPollingNotice =
     pageState.status === 'ready' && shouldPollRuns(pageState.runs);
 
@@ -242,33 +324,63 @@ export function RunsPage() {
                   <th scope="col">Started</th>
                   <th scope="col">Ended</th>
                   <th scope="col">Duration</th>
+                  <th scope="col">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {pageState.runs.map((runSummary) => (
-                  <tr key={runSummary.id}>
-                    <td>
-                      <Link className="run-link" to={`/runs/${runSummary.id}`}>
-                        {runSummary.id}
-                      </Link>
-                    </td>
-                    <td>{runSummary.suite_name}</td>
-                    <td>
-                      <span className="run-status-pill">
-                        {runSummary.status}
-                      </span>
-                    </td>
-                    <td>{formatReason(runSummary.reason)}</td>
-                    <td>
-                      <time dateTime={runSummary.created_at}>
-                        {formatTimestamp(runSummary.created_at)}
-                      </time>
-                    </td>
-                    <td>{formatStartTime(runSummary)}</td>
-                    <td>{formatEndTime(runSummary)}</td>
-                    <td>{formatDuration(runSummary)}</td>
-                  </tr>
-                ))}
+                {pageState.runs.map((runSummary) => {
+                  const isCancelling = cancellingRunIds.includes(runSummary.id);
+                  const runFeedback = runFeedbackByRunId[runSummary.id];
+
+                  return (
+                    <tr key={runSummary.id}>
+                      <td>
+                        <Link
+                          className="run-link"
+                          to={`/runs/${runSummary.id}`}
+                        >
+                          {runSummary.id}
+                        </Link>
+                      </td>
+                      <td>{runSummary.suite_name}</td>
+                      <td>
+                        <span className="run-status-pill">
+                          {runSummary.status}
+                        </span>
+                      </td>
+                      <td>{formatReason(runSummary.reason)}</td>
+                      <td>
+                        <time dateTime={runSummary.created_at}>
+                          {formatTimestamp(runSummary.created_at)}
+                        </time>
+                      </td>
+                      <td>{formatStartTime(runSummary)}</td>
+                      <td>{formatEndTime(runSummary)}</td>
+                      <td>{formatDuration(runSummary)}</td>
+                      <td>
+                        <div className="inline-action-stack">
+                          {shouldPollRunStatus(runSummary.status) ? (
+                            <button
+                              className="inline-action-button"
+                              disabled={isCancelling}
+                              onClick={() => {
+                                void handleCancelRun(runSummary.id);
+                              }}
+                              type="button"
+                            >
+                              {isCancelling ? 'Cancelling...' : 'Cancel run'}
+                            </button>
+                          ) : null}
+                          {runFeedback?.status === 'error' ? (
+                            <p className="inline-action-feedback inline-action-feedback-error">
+                              {runFeedback.message}
+                            </p>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

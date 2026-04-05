@@ -191,6 +191,32 @@ export class RunsService {
     return runRecords.map(toRunSummary);
   }
 
+  async getRunSummaryById(runId: number): Promise<RunSummary | null> {
+    const runRecord = (await this.prismaService.run.findUnique({
+      where: {
+        id: runId,
+      },
+      select: {
+        id: true,
+        suite_id: true,
+        suite_name_snapshot: true,
+        status: true,
+        reason: true,
+        exit_code: true,
+        created_at: true,
+        start_time: true,
+        end_time: true,
+        duration_ms: true,
+      },
+    })) as RunSummaryRecord | null;
+
+    if (runRecord === null) {
+      return null;
+    }
+
+    return toRunSummary(runRecord);
+  }
+
   async getRunById(runId: number): Promise<RunDetail | null> {
     const runRecord = (await this.prismaService.run.findUnique({
       where: {
@@ -258,5 +284,54 @@ export class RunsService {
         probe_url: true,
       },
     })) as RunExecutionContext | null;
+  }
+
+  async cancelPendingRun(
+    runId: number,
+    cancelledAt: Date,
+  ): Promise<RunSummary | null> {
+    return this.prismaService.$transaction(async (transactionClient) => {
+      const updatedRunCount = await transactionClient.run.updateMany({
+        where: {
+          id: runId,
+          status: 'pending',
+        },
+        data: {
+          status: 'cancelled',
+          reason: 'user_cancelled',
+          exit_code: null,
+          end_time: cancelledAt,
+          duration_ms: null,
+        },
+      });
+
+      if (updatedRunCount.count === 0) {
+        return null;
+      }
+
+      const cancelledRunRecord = (await transactionClient.run.findUnique({
+        where: {
+          id: runId,
+        },
+        select: {
+          id: true,
+          suite_id: true,
+          suite_name_snapshot: true,
+          status: true,
+          reason: true,
+          exit_code: true,
+          created_at: true,
+          start_time: true,
+          end_time: true,
+          duration_ms: true,
+        },
+      })) as RunSummaryRecord | null;
+
+      if (cancelledRunRecord === null) {
+        return null;
+      }
+
+      return toRunSummary(cancelledRunRecord);
+    });
   }
 }

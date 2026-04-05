@@ -1,12 +1,13 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   Get,
+  HttpCode,
   Inject,
   NotFoundException,
   Param,
   Post,
-  Body,
 } from '@nestjs/common';
 import { RunSchedulerService } from './run-scheduler.service';
 import { RunsService } from './runs.service';
@@ -25,6 +26,24 @@ function parsePositiveIntegerPathParam(
   }
 
   return Number(rawValue);
+}
+
+function assertEmptyActionRequestBody(requestBody: unknown): void {
+  if (requestBody === null || requestBody === undefined) {
+    return;
+  }
+
+  if (
+    typeof requestBody !== 'object' ||
+    Array.isArray(requestBody) ||
+    Object.keys(requestBody).length > 0
+  ) {
+    throw new BadRequestException({
+      error: {
+        message: 'Request body must be empty.',
+      },
+    });
+  }
 }
 
 @Controller()
@@ -88,5 +107,17 @@ export class RunsController {
     }
 
     return runDetail;
+  }
+
+  @Post('runs/:id/cancel')
+  @HttpCode(200)
+  async cancelRunById(
+    @Param('id') id: string,
+    @Body() requestBody: Record<string, unknown> | null | undefined,
+  ) {
+    const runId = parsePositiveIntegerPathParam(id, 'id');
+    assertEmptyActionRequestBody(requestBody);
+
+    return this.runSchedulerService.cancelRun(runId);
   }
 }

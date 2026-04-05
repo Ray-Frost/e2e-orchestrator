@@ -212,6 +212,19 @@ function expectCreateRunRequest(
   });
 }
 
+function expectCancelRunRequest(
+  fetchMock: ReturnType<typeof vi.fn>,
+  requestIndex: number,
+  runId: number,
+) {
+  const requestCall = fetchMock.mock.calls[requestIndex];
+
+  expect(requestCall?.[0]).toBe(`/api/runs/${runId}/cancel`);
+  expect(requestCall?.[1]).toEqual({
+    method: 'POST',
+  });
+}
+
 beforeEach(() => {
   window.history.pushState({}, '', '/statistics/failures');
 });
@@ -655,6 +668,235 @@ test('renders populated runs with operator fields and peer-route navigation', as
   expect(screen.getByText('None')).toBeInTheDocument();
 });
 
+test('shows cancel controls only for pending and running runs on /runs', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue(
+      createJsonResponse([
+        createRunSummaryResponse({
+          id: 21,
+          status: 'pending',
+          exit_code: null,
+          start_time: null,
+          end_time: null,
+          duration_ms: null,
+        }),
+        createRunSummaryResponse({
+          id: 22,
+          status: 'running',
+          exit_code: null,
+          end_time: null,
+          duration_ms: null,
+        }),
+        createRunSummaryResponse({
+          id: 23,
+          status: 'success',
+        }),
+      ]),
+    ),
+  );
+
+  renderAppAtRoute('/runs');
+
+  const pendingRunRow = (
+    await screen.findByRole('link', { name: '21' })
+  ).closest('tr');
+  const runningRunRow = screen.getByRole('link', { name: '22' }).closest('tr');
+  const terminalRunRow = screen.getByRole('link', { name: '23' }).closest('tr');
+
+  expect(pendingRunRow).not.toBeNull();
+  expect(runningRunRow).not.toBeNull();
+  expect(terminalRunRow).not.toBeNull();
+
+  expect(
+    within(pendingRunRow!).getByRole('button', { name: 'Cancel run' }),
+  ).toBeEnabled();
+  expect(
+    within(runningRunRow!).getByRole('button', { name: 'Cancel run' }),
+  ).toBeEnabled();
+  expect(
+    within(terminalRunRow!).queryByRole('button', { name: 'Cancel run' }),
+  ).toBeNull();
+});
+
+test('requires native confirmation before cancelling a run from /runs', async () => {
+  const confirmMock = vi.fn().mockReturnValue(false);
+  const fetchMock = vi.fn().mockResolvedValue(
+    createJsonResponse([
+      createRunSummaryResponse({
+        id: 21,
+        status: 'pending',
+        exit_code: null,
+        start_time: null,
+        end_time: null,
+        duration_ms: null,
+      }),
+    ]),
+  );
+
+  vi.stubGlobal('confirm', confirmMock);
+  vi.stubGlobal('fetch', fetchMock);
+
+  renderAppAtRoute('/runs');
+
+  const user = userEvent.setup();
+  await user.click(
+    within(
+      (await screen.findByRole('link', { name: '21' })).closest('tr')!,
+    ).getByRole('button', { name: 'Cancel run' }),
+  );
+
+  expect(confirmMock).toHaveBeenCalledWith('Cancel run 21?');
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+});
+
+test('disables only the clicked cancel control and refreshes /runs after success', async () => {
+  const cancelRequest = createDeferredPromise<Response>();
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(
+      createJsonResponse([
+        createRunSummaryResponse({
+          id: 21,
+          status: 'pending',
+          exit_code: null,
+          start_time: null,
+          end_time: null,
+          duration_ms: null,
+        }),
+        createRunSummaryResponse({
+          id: 22,
+          status: 'running',
+          exit_code: null,
+          end_time: null,
+          duration_ms: null,
+        }),
+      ]),
+    )
+    .mockReturnValueOnce(cancelRequest.promise)
+    .mockResolvedValueOnce(
+      createJsonResponse([
+        createRunSummaryResponse({
+          id: 21,
+          status: 'cancelled',
+          reason: 'user_cancelled',
+          exit_code: null,
+          start_time: null,
+          end_time: '2026-03-20T12:00:04.000Z',
+          duration_ms: null,
+        }),
+        createRunSummaryResponse({
+          id: 22,
+          status: 'running',
+          exit_code: null,
+          end_time: null,
+          duration_ms: null,
+        }),
+      ]),
+    );
+
+  vi.stubGlobal('confirm', vi.fn().mockReturnValue(true));
+  vi.stubGlobal('fetch', fetchMock);
+
+  renderAppAtRoute('/runs');
+
+  const user = userEvent.setup();
+  const pendingRunRow = (
+    await screen.findByRole('link', { name: '21' })
+  ).closest('tr');
+  const runningRunRow = screen.getByRole('link', { name: '22' }).closest('tr');
+
+  expect(pendingRunRow).not.toBeNull();
+  expect(runningRunRow).not.toBeNull();
+
+  await user.click(
+    within(pendingRunRow!).getByRole('button', { name: 'Cancel run' }),
+  );
+
+  expect(
+    within(pendingRunRow!).getByRole('button', { name: 'Cancelling...' }),
+  ).toBeDisabled();
+  expect(
+    within(runningRunRow!).getByRole('button', { name: 'Cancel run' }),
+  ).toBeEnabled();
+  expectCancelRunRequest(fetchMock, 1, 21);
+
+  cancelRequest.resolve(
+    createJsonResponse(
+      createRunSummaryResponse({
+        id: 21,
+        status: 'cancelled',
+        reason: 'user_cancelled',
+        exit_code: null,
+        start_time: null,
+        end_time: '2026-03-20T12:00:04.000Z',
+        duration_ms: null,
+      }),
+      200,
+    ),
+  );
+  await flushAsyncWork();
+
+  expect(fetchMock.mock.calls[2]?.[0]).toBe('/api/runs');
+  expect(await screen.findByText('user_cancelled')).toBeInTheDocument();
+  expect(
+    within(screen.getByRole('link', { name: '21' }).closest('tr')!).queryByRole(
+      'button',
+      { name: 'Cancel run' },
+    ),
+  ).toBeNull();
+});
+
+test('shows local cancel errors on /runs without clearing the ready state', async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(
+      createJsonResponse([
+        createRunSummaryResponse({
+          id: 21,
+          status: 'running',
+          exit_code: null,
+          end_time: null,
+          duration_ms: null,
+        }),
+      ]),
+    )
+    .mockResolvedValueOnce(
+      createJsonResponse(
+        {
+          error: {
+            message: 'Run 21 can no longer be cancelled.',
+          },
+        },
+        400,
+      ),
+    );
+
+  vi.stubGlobal('confirm', vi.fn().mockReturnValue(true));
+  vi.stubGlobal('fetch', fetchMock);
+
+  renderAppAtRoute('/runs');
+
+  const user = userEvent.setup();
+  await user.click(
+    within(
+      (await screen.findByRole('link', { name: '21' })).closest('tr')!,
+    ).getByRole('button', { name: 'Cancel run' }),
+  );
+
+  expectCancelRunRequest(fetchMock, 1, 21);
+  expect(
+    await screen.findByText('Run 21 can no longer be cancelled.'),
+  ).toBeInTheDocument();
+  expect(screen.getByText('demo-smoke')).toBeInTheDocument();
+  expect(
+    within(screen.getByRole('link', { name: '21' }).closest('tr')!).getByRole(
+      'button',
+      { name: 'Cancel run' },
+    ),
+  ).toBeEnabled();
+});
+
 test('does not start polling when the runs list is already fully terminal', async () => {
   const scheduledPollCallbacks: Array<() => void> = [];
 
@@ -1006,6 +1248,142 @@ test('renders the backend error message when the run detail request fails', asyn
   expect(
     await screen.findByText('Failed to load run detail.'),
   ).toBeInTheDocument();
+});
+
+test('shows the detail cancel control only while a run is active', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockResolvedValueOnce(
+        createJsonResponse(
+          createRunDetailResponse({
+            id: 12,
+            status: 'running',
+            exit_code: null,
+            end_time: null,
+            duration_ms: null,
+            result_summary: null,
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(
+          createRunDetailResponse({
+            id: 18,
+            status: 'success',
+          }),
+        ),
+      ),
+  );
+
+  renderAppAtRoute('/runs/12');
+
+  expect(
+    await screen.findByRole('button', { name: 'Cancel run' }),
+  ).toBeEnabled();
+
+  await navigateToRoute('/runs/18');
+
+  expect(
+    await screen.findByRole('heading', { name: 'Run 18' }),
+  ).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Cancel run' })).toBeNull();
+});
+
+test('disables the detail cancel control and refreshes /runs/:id after success', async () => {
+  const cancelRequest = createDeferredPromise<Response>();
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(
+      createJsonResponse(
+        createRunDetailResponse({
+          id: 12,
+          status: 'running',
+          exit_code: null,
+          end_time: null,
+          duration_ms: null,
+          result_summary: null,
+        }),
+      ),
+    )
+    .mockReturnValueOnce(cancelRequest.promise)
+    .mockResolvedValueOnce(
+      createJsonResponse(
+        createRunDetailResponse({
+          id: 12,
+          status: 'cancelled',
+          reason: 'user_cancelled',
+          exit_code: null,
+          end_time: '2026-03-20T12:00:04.000Z',
+          duration_ms: 2_000,
+          result_summary: null,
+        }),
+      ),
+    );
+
+  vi.stubGlobal('confirm', vi.fn().mockReturnValue(true));
+  vi.stubGlobal('fetch', fetchMock);
+
+  renderAppAtRoute('/runs/12');
+
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole('button', { name: 'Cancel run' }));
+
+  expect(screen.getByRole('button', { name: 'Cancelling...' })).toBeDisabled();
+  expectCancelRunRequest(fetchMock, 1, 12);
+
+  cancelRequest.resolve(
+    createJsonResponse(createRunSummaryResponse({ id: 12 })),
+  );
+  await flushAsyncWork();
+
+  expect(fetchMock.mock.calls[2]?.[0]).toBe('/api/runs/12');
+  expect(await screen.findByText('user_cancelled')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Cancel run' })).toBeNull();
+});
+
+test('shows local cancel errors on /runs/:id without hiding the ready state', async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(
+      createJsonResponse(
+        createRunDetailResponse({
+          id: 12,
+          status: 'running',
+          exit_code: null,
+          end_time: null,
+          duration_ms: null,
+          result_summary: null,
+        }),
+      ),
+    )
+    .mockResolvedValueOnce(
+      createJsonResponse(
+        {
+          error: {
+            message: 'Run 12 can no longer be cancelled.',
+          },
+        },
+        400,
+      ),
+    );
+
+  vi.stubGlobal('confirm', vi.fn().mockReturnValue(true));
+  vi.stubGlobal('fetch', fetchMock);
+
+  renderAppAtRoute('/runs/12');
+
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole('button', { name: 'Cancel run' }));
+
+  expectCancelRunRequest(fetchMock, 1, 12);
+  expect(
+    await screen.findByText('Run 12 can no longer be cancelled.'),
+  ).toBeInTheDocument();
+  expect(screen.getByText('Overview')).toBeInTheDocument();
+  expect(screen.getByText('demo-smoke')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Cancel run' })).toBeEnabled();
 });
 
 test('renders artifact availability and summary-unavailable copy for runs without parsed case results', async () => {
