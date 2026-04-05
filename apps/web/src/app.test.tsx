@@ -10,18 +10,33 @@ type SuiteSummaryResponse = {
   sut_base_url: string;
 };
 
+type RunStatusResponse =
+  | 'pending'
+  | 'running'
+  | 'success'
+  | 'abort'
+  | 'fail'
+  | 'timeout'
+  | 'cancelled';
+
+type RunSummaryResponse = {
+  id: number;
+  suite_id: number;
+  suite_name: string;
+  status: RunStatusResponse;
+  reason: string | null;
+  exit_code: number | null;
+  created_at: string;
+  start_time: string | null;
+  end_time: string | null;
+  duration_ms: number | null;
+};
+
 type RunDetailResponse = {
   id: number;
   suite_id: number;
   suite_name: string;
-  status:
-    | 'pending'
-    | 'running'
-    | 'success'
-    | 'abort'
-    | 'fail'
-    | 'timeout'
-    | 'cancelled';
+  status: RunStatusResponse;
   reason: string | null;
   exit_code: number | null;
   created_at: string;
@@ -45,6 +60,11 @@ type RunDetailResponse = {
     skipped_count: number;
   } | null;
 };
+
+const runDetailPollingNotice =
+  'Auto-refreshing every 2 seconds while this run is active.';
+const runsPollingNotice =
+  'Polling every 2 seconds while at least one run is active.';
 
 function createJsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -110,6 +130,24 @@ function createRunDetailResponse(
       overrides.result_summary === undefined
         ? baseResponse.result_summary
         : overrides.result_summary,
+  };
+}
+
+function createRunSummaryResponse(
+  overrides: Partial<RunSummaryResponse> = {},
+): RunSummaryResponse {
+  return {
+    id: 12,
+    suite_id: 1,
+    suite_name: 'demo-smoke',
+    status: 'success',
+    reason: null,
+    exit_code: 0,
+    created_at: '2026-03-20T12:00:00.000Z',
+    start_time: '2026-03-20T12:00:02.000Z',
+    end_time: '2026-03-20T12:00:07.000Z',
+    duration_ms: 5000,
+    ...overrides,
   };
 }
 
@@ -288,12 +326,16 @@ test('renders ready suites cards with suite context fields', async () => {
   expect(
     within(checkoutSmokeCard).getByText('http://localhost:4100'),
   ).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Runs' })).toHaveAttribute(
+    'href',
+    '/runs',
+  );
   expect(
-    screen.getByRole('link', { name: 'Open failure statistics' }),
+    screen.getByRole('link', { name: 'Failure statistics' }),
   ).toHaveAttribute('href', '/statistics/failures');
 });
 
-test('loads failure statistics when the secondary suites navigation is clicked', async () => {
+test('loads runs when the suites navigation link is clicked', async () => {
   const fetchMock = vi
     .fn()
     .mockResolvedValueOnce(
@@ -301,13 +343,14 @@ test('loads failure statistics when the secondary suites navigation is clicked',
     )
     .mockResolvedValueOnce(
       createJsonResponse([
-        {
-          test_lib_case_code: 'AUTH_LOGIN_INVALID_PASSWORD',
-          case_title: 'Shows an invalid password error with guidance',
-          fail_count: 2,
-          last_failed_at: '2026-03-20T12:00:00.000Z',
-          last_run_id: 12,
-        },
+        createRunSummaryResponse({
+          id: 44,
+          suite_name: 'alpha',
+          status: 'running',
+          exit_code: null,
+          end_time: null,
+          duration_ms: null,
+        }),
       ]),
     );
 
@@ -317,14 +360,12 @@ test('loads failure statistics when the secondary suites navigation is clicked',
 
   const user = userEvent.setup();
 
-  await user.click(
-    await screen.findByRole('link', { name: 'Open failure statistics' }),
-  );
+  await user.click(await screen.findByRole('link', { name: 'Runs' }));
 
   expect(
-    await screen.findByRole('heading', { name: 'Failure statistics' }),
+    await screen.findByRole('heading', { name: 'Runs' }),
   ).toBeInTheDocument();
-  expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/statistics/failures');
+  expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/runs');
 });
 
 test('disables only the clicked suite action while create-run is in flight', async () => {
@@ -519,6 +560,287 @@ test('renders populated failure statistics rows with run links', async () => {
     'href',
     '/runs/12',
   );
+  expect(screen.getByRole('link', { name: 'Suites' })).toHaveAttribute(
+    'href',
+    '/suites',
+  );
+  expect(screen.getByRole('link', { name: 'Runs' })).toHaveAttribute(
+    'href',
+    '/runs',
+  );
+});
+
+test('shows a loading state while runs load', async () => {
+  const fetchMock = vi.fn().mockReturnValue(new Promise<Response>(() => {}));
+
+  vi.stubGlobal('fetch', fetchMock);
+
+  renderAppAtRoute('/runs');
+
+  expect(await screen.findByRole('heading', { name: 'Runs' })).toBeVisible();
+  expect(screen.getByText('Loading runs...')).toBeInTheDocument();
+  expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/runs');
+});
+
+test('renders an empty state when the runs API returns no entries', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(createJsonResponse([])));
+
+  renderAppAtRoute('/runs');
+
+  expect(
+    await screen.findByText('No runs have been recorded yet.'),
+  ).toBeInTheDocument();
+});
+
+test('renders the backend error message when the runs request fails', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue(
+      createJsonResponse(
+        {
+          error: {
+            message: 'Failed to load runs.',
+          },
+        },
+        500,
+      ),
+    ),
+  );
+
+  renderAppAtRoute('/runs');
+
+  expect(await screen.findByText('Failed to load runs.')).toBeInTheDocument();
+});
+
+test('renders populated runs with operator fields and peer-route navigation', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue(
+      createJsonResponse([
+        createRunSummaryResponse({
+          id: 91,
+          status: 'running',
+          exit_code: null,
+          end_time: null,
+          duration_ms: null,
+        }),
+        createRunSummaryResponse({
+          id: 90,
+          suite_name: 'checkout-smoke',
+          status: 'fail',
+          reason: 'cases_failed',
+          created_at: '2026-03-20T11:55:00.000Z',
+          start_time: '2026-03-20T11:55:02.000Z',
+          end_time: '2026-03-20T11:55:07.000Z',
+        }),
+      ]),
+    ),
+  );
+
+  renderAppAtRoute('/runs');
+
+  expect(await screen.findByText('checkout-smoke')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '91' })).toHaveAttribute(
+    'href',
+    '/runs/91',
+  );
+  expect(screen.getByRole('link', { name: 'Suites' })).toHaveAttribute(
+    'href',
+    '/suites',
+  );
+  expect(
+    screen.getByRole('link', { name: 'Failure statistics' }),
+  ).toHaveAttribute('href', '/statistics/failures');
+  expect(screen.getByText('cases_failed')).toBeInTheDocument();
+  expect(screen.getByText('None')).toBeInTheDocument();
+});
+
+test('does not start polling when the runs list is already fully terminal', async () => {
+  const scheduledPollCallbacks: Array<() => void> = [];
+
+  vi.spyOn(window, 'setTimeout').mockImplementation(((
+    callback: TimerHandler,
+  ) => {
+    if (typeof callback === 'function') {
+      scheduledPollCallbacks.push(callback as () => void);
+    }
+
+    return scheduledPollCallbacks.length;
+  }) as typeof window.setTimeout);
+  vi.spyOn(window, 'clearTimeout').mockImplementation(
+    (() => undefined) as typeof window.clearTimeout,
+  );
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue(
+      createJsonResponse([
+        createRunSummaryResponse(),
+        createRunSummaryResponse({
+          id: 8,
+          status: 'fail',
+          reason: 'cases_failed',
+        }),
+      ]),
+    ),
+  );
+
+  renderAppAtRoute('/runs');
+  await flushAsyncWork();
+
+  expect(screen.getByText('success')).toBeInTheDocument();
+  expect(screen.queryByText(runsPollingNotice)).not.toBeInTheDocument();
+  expect(scheduledPollCallbacks).toHaveLength(0);
+});
+
+test('polls active runs and stops after a terminal list response', async () => {
+  const scheduledPollCallbacks: Array<() => void> = [];
+
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(
+      createJsonResponse([
+        createRunSummaryResponse({
+          id: 21,
+          status: 'pending',
+          exit_code: null,
+          start_time: null,
+          end_time: null,
+          duration_ms: null,
+        }),
+      ]),
+    )
+    .mockResolvedValueOnce(
+      createJsonResponse([
+        createRunSummaryResponse({
+          id: 21,
+          status: 'running',
+          exit_code: null,
+          end_time: null,
+          duration_ms: null,
+        }),
+      ]),
+    )
+    .mockResolvedValueOnce(
+      createJsonResponse([
+        createRunSummaryResponse({
+          id: 21,
+          status: 'success',
+        }),
+      ]),
+    );
+
+  vi.spyOn(window, 'setTimeout').mockImplementation(((
+    callback: TimerHandler,
+  ) => {
+    if (typeof callback === 'function') {
+      scheduledPollCallbacks.push(callback as () => void);
+    }
+
+    return scheduledPollCallbacks.length;
+  }) as typeof window.setTimeout);
+  vi.spyOn(window, 'clearTimeout').mockImplementation(
+    (() => undefined) as typeof window.clearTimeout,
+  );
+  vi.stubGlobal('fetch', fetchMock);
+
+  renderAppAtRoute('/runs');
+  await flushAsyncWork();
+
+  expect(screen.getByText(runsPollingNotice)).toBeInTheDocument();
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(scheduledPollCallbacks).toHaveLength(1);
+
+  const firstPollCallback = scheduledPollCallbacks.shift();
+  firstPollCallback?.();
+  await flushAsyncWork();
+
+  expect(screen.getByText('running')).toBeInTheDocument();
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  expect(scheduledPollCallbacks).toHaveLength(1);
+
+  const secondPollCallback = scheduledPollCallbacks.shift();
+  secondPollCallback?.();
+  await flushAsyncWork();
+
+  expect(screen.getByText('success')).toBeInTheDocument();
+  expect(fetchMock).toHaveBeenCalledTimes(3);
+  expect(screen.queryByText(runsPollingNotice)).not.toBeInTheDocument();
+  expect(scheduledPollCallbacks).toHaveLength(0);
+});
+
+test('keeps polling after a transient runs-list failure and preserves the ready state', async () => {
+  const scheduledPollCallbacks: Array<() => void> = [];
+
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(
+      createJsonResponse([
+        createRunSummaryResponse({
+          id: 33,
+          status: 'running',
+          exit_code: null,
+          end_time: null,
+          duration_ms: null,
+        }),
+      ]),
+    )
+    .mockResolvedValueOnce(
+      createJsonResponse(
+        {
+          error: {
+            message: 'Temporary upstream failure.',
+          },
+        },
+        500,
+      ),
+    )
+    .mockResolvedValueOnce(
+      createJsonResponse([
+        createRunSummaryResponse({
+          id: 33,
+          status: 'success',
+        }),
+      ]),
+    );
+
+  vi.spyOn(window, 'setTimeout').mockImplementation(((
+    callback: TimerHandler,
+  ) => {
+    if (typeof callback === 'function') {
+      scheduledPollCallbacks.push(callback as () => void);
+    }
+
+    return scheduledPollCallbacks.length;
+  }) as typeof window.setTimeout);
+  vi.spyOn(window, 'clearTimeout').mockImplementation(
+    (() => undefined) as typeof window.clearTimeout,
+  );
+  vi.stubGlobal('fetch', fetchMock);
+
+  renderAppAtRoute('/runs');
+  await flushAsyncWork();
+
+  expect(screen.getByText('running')).toBeInTheDocument();
+  expect(scheduledPollCallbacks).toHaveLength(1);
+
+  const firstPollCallback = scheduledPollCallbacks.shift();
+  firstPollCallback?.();
+  await flushAsyncWork();
+
+  expect(screen.getByText('running')).toBeInTheDocument();
+  expect(
+    screen.queryByText('Temporary upstream failure.'),
+  ).not.toBeInTheDocument();
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  expect(scheduledPollCallbacks).toHaveLength(1);
+
+  const secondPollCallback = scheduledPollCallbacks.shift();
+  secondPollCallback?.();
+  await flushAsyncWork();
+
+  expect(screen.getByText('success')).toBeInTheDocument();
+  expect(fetchMock).toHaveBeenCalledTimes(3);
+  expect(screen.queryByText(runsPollingNotice)).not.toBeInTheDocument();
 });
 
 test('loads a real run detail page when a run link is clicked', async () => {
@@ -549,10 +871,54 @@ test('loads a real run detail page when a run link is clicked', async () => {
   expect(
     await screen.findByRole('heading', { name: 'Run 12' }),
   ).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Suites' })).toHaveAttribute(
+    'href',
+    '/suites',
+  );
+  expect(screen.getByRole('link', { name: 'Runs' })).toHaveAttribute(
+    'href',
+    '/runs',
+  );
+  expect(
+    screen.getByRole('link', { name: 'Failure statistics' }),
+  ).toHaveAttribute('href', '/statistics/failures');
+  expect(screen.getByRole('link', { name: 'Runs' })).toHaveClass(
+    'operator-nav-link-active',
+  );
+  expect(
+    screen.queryByRole('link', { name: 'Back to failure statistics' }),
+  ).not.toBeInTheDocument();
   expect(screen.getByText('Overview')).toBeInTheDocument();
   expect(
     screen.queryByText('Run details are not implemented yet.'),
   ).not.toBeInTheDocument();
+});
+
+test('navigates from run detail to the runs page through the shared nav', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(createRunDetailResponse()))
+      .mockResolvedValueOnce(
+        createJsonResponse([createRunSummaryResponse({ id: 18 })]),
+      ),
+  );
+
+  renderAppAtRoute('/runs/18');
+
+  const user = userEvent.setup();
+
+  expect(
+    await screen.findByRole('heading', { name: 'Run 18' }),
+  ).toBeInTheDocument();
+
+  await user.click(screen.getByRole('link', { name: 'Runs' }));
+
+  expect(
+    await screen.findByRole('heading', { name: 'Runs' }),
+  ).toBeInTheDocument();
+  expect(window.location.pathname).toBe('/runs');
 });
 
 test('shows a loading state while run detail loads', async () => {
@@ -757,11 +1123,7 @@ test('polls pending and running runs, then stops after a terminal response', asy
   renderAppAtRoute('/runs/12');
   await flushAsyncWork();
 
-  expect(
-    screen.getByText(
-      'Auto-refreshing every 2 seconds while this run is active.',
-    ),
-  ).toBeInTheDocument();
+  expect(screen.getByText(runDetailPollingNotice)).toBeInTheDocument();
   expect(fetchMock).toHaveBeenCalledTimes(1);
   expect(scheduledPollCallbacks).toHaveLength(1);
 
@@ -779,11 +1141,7 @@ test('polls pending and running runs, then stops after a terminal response', asy
 
   expect(screen.getByText('success')).toBeInTheDocument();
   expect(fetchMock).toHaveBeenCalledTimes(3);
-  expect(
-    screen.queryByText(
-      'Auto-refreshing every 2 seconds while this run is active.',
-    ),
-  ).not.toBeInTheDocument();
+  expect(screen.queryByText(runDetailPollingNotice)).not.toBeInTheDocument();
   expect(scheduledPollCallbacks).toHaveLength(0);
 });
 
@@ -858,11 +1216,7 @@ test('keeps polling after a transient active-run failure and eventually shows th
 
   expect(screen.getByText('success')).toBeInTheDocument();
   expect(fetchMock).toHaveBeenCalledTimes(3);
-  expect(
-    screen.queryByText(
-      'Auto-refreshing every 2 seconds while this run is active.',
-    ),
-  ).not.toBeInTheDocument();
+  expect(screen.queryByText(runDetailPollingNotice)).not.toBeInTheDocument();
 });
 
 test('ignores an outdated 404 response when the route changes before the body resolves', async () => {

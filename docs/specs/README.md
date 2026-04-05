@@ -39,3 +39,6 @@ This directory stores feature-level planning assets extracted from
 - [`005-suites-page/`](./005-suites-page/): frontend `/suites` homepage,
   minimal suites API expansion for suite context, and lightweight
   same-page run creation feedback.
+- [`006-runs-page/`](./006-runs-page/): frontend `/runs` operator page,
+  low-concurrency polling for active runs, and peer navigation among the
+  top-level operator pages.

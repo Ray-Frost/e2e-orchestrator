@@ -6,7 +6,7 @@ Companion docs: [`spec.md`](./spec.md), [`plan.md`](./plan.md)
 
 - Implement on the current branch.
 - Reuse the existing `GET /api/runs/{id}` route, frontend routing scaffold, and
-  failure-statistics navigation path as the starting point.
+  shared operator navigation patterns as the starting point.
 - Keep the slice read-only and observation-first.
 
 ## Ordered Tasks
@@ -18,7 +18,8 @@ Companion docs: [`spec.md`](./spec.md), [`plan.md`](./plan.md)
 2. Add the `Run detail page` frontend module and replace the current placeholder
    `/runs/:id` route behavior.
    Validation: frontend tests confirm a run link lands on a real detail page
-   instead of the placeholder copy.
+   instead of the placeholder copy, and the shared operator navigation treats
+   the detail route as part of `Runs`.
 3. Implement route-level fetch lifecycle and active-run polling.
    Validation: frontend tests cover loading, not-found, generic-error, ready,
    polling for `pending`/`running`, and polling stop after terminalization.

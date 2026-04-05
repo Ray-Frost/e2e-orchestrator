@@ -1,7 +1,7 @@
 import { startTransition, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-
-export const failureStatisticsRoute = '/statistics/failures';
+import { readApiErrorMessage } from './api-error';
+import { OperatorNavigation } from './operator-navigation';
 
 const failureStatisticsApiPath = '/api/statistics/failures';
 const defaultFailureStatisticsErrorMessage =
@@ -28,12 +28,6 @@ type FailureStatisticsPageState =
       rows: FailureStatisticsRow[];
     };
 
-type FailureStatisticsErrorResponse = {
-  error: {
-    message: string;
-  };
-};
-
 function formatFailureTimestamp(timestamp: string) {
   const parsedDate = new Date(timestamp);
 
@@ -42,37 +36,6 @@ function formatFailureTimestamp(timestamp: string) {
   }
 
   return parsedDate.toISOString().replace('T', ' ').replace('.000Z', ' UTC');
-}
-
-function isFailureStatisticsErrorResponse(
-  value: unknown,
-): value is FailureStatisticsErrorResponse {
-  if (typeof value !== 'object' || value === null || !('error' in value)) {
-    return false;
-  }
-
-  const errorValue = value.error;
-
-  return (
-    typeof errorValue === 'object' &&
-    errorValue !== null &&
-    'message' in errorValue &&
-    typeof errorValue.message === 'string'
-  );
-}
-
-async function readFailureStatisticsErrorMessage(response: Response) {
-  try {
-    const responseBody = (await response.json()) as unknown;
-
-    if (isFailureStatisticsErrorResponse(responseBody)) {
-      return responseBody.error.message;
-    }
-  } catch {
-    return defaultFailureStatisticsErrorMessage;
-  }
-
-  return defaultFailureStatisticsErrorMessage;
 }
 
 export function FailureStatisticsPage() {
@@ -90,7 +53,12 @@ export function FailureStatisticsPage() {
         });
 
         if (!response.ok) {
-          throw new Error(await readFailureStatisticsErrorMessage(response));
+          throw new Error(
+            await readApiErrorMessage(
+              response,
+              defaultFailureStatisticsErrorMessage,
+            ),
+          );
         }
 
         const responseBody = (await response.json()) as FailureStatisticsRow[];
@@ -130,6 +98,7 @@ export function FailureStatisticsPage() {
   return (
     <main className="app-shell">
       <header className="page-header">
+        <OperatorNavigation />
         <p className="page-eyebrow">Statistics</p>
         <h1>Failure statistics</h1>
         <p className="page-summary">

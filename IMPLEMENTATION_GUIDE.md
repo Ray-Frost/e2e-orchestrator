@@ -10,6 +10,7 @@
 - [`docs/specs/003-external-smoke-run-loop/`](./docs/specs/003-external-smoke-run-loop/)
 - [`docs/specs/004-run-detail-page/`](./docs/specs/004-run-detail-page/)
 - [`docs/specs/005-suites-page/`](./docs/specs/005-suites-page/)
+- [`docs/specs/006-runs-page/`](./docs/specs/006-runs-page/)
 
 ## 2. 平台边界
 
@@ -56,6 +57,9 @@
 - suites 首页、`GET /api/suites` 的最小展示字段扩展、以及同页
   create-run 反馈见
   [`005-suites-page`](./docs/specs/005-suites-page/).
+- runs 列表页、`GET /api/runs` 驱动的只读运营视图、以及运行中列表的
+  低并发自动轮询见
+  [`006-runs-page`](./docs/specs/006-runs-page/).
 
 ## 6. API 约定
 

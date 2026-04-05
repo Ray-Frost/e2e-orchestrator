@@ -13,6 +13,45 @@
   animation: rise-in 220ms ease-out;
 }
 
+.operator-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-bottom: 1.1rem;
+}
+
+.operator-nav-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.52rem 0.9rem;
+  border: 1px solid rgba(81, 73, 54, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.6);
+  color: #2f4d60;
+  font-size: 0.92rem;
+  font-weight: 700;
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    background-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.operator-nav-link:hover {
+  transform: translateY(-1px);
+  border-color: rgba(19, 92, 130, 0.24);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 12px 28px rgba(19, 92, 130, 0.12);
+}
+
+.operator-nav-link-active {
+  border-color: rgba(156, 77, 23, 0.24);
+  background: rgba(231, 198, 164, 0.4);
+  color: #7d3c14;
+  box-shadow: 0 14px 30px rgba(156, 77, 23, 0.12);
+}
+
 .page-eyebrow {
   margin: 0 0 0.5rem;
   font-size: 0.78rem;
@@ -37,7 +76,8 @@
 }
 
 .status-panel,
-.failures-table-panel {
+.failures-table-panel,
+.runs-table-panel {
   border: 1px solid var(--panel-border-color);
   border-radius: 1.4rem;
   background: rgba(255, 252, 246, 0.88);
@@ -60,6 +100,13 @@
   background: rgba(255, 242, 238, 0.95);
 }
 
+.status-panel-info {
+  margin-bottom: 1rem;
+  border-color: rgba(19, 92, 130, 0.16);
+  color: #214b61;
+  background: rgba(240, 248, 252, 0.94);
+}
+
 .status-panel a {
   display: inline-flex;
   margin-top: 1rem;
@@ -69,19 +116,23 @@
   overflow-x: auto;
 }
 
-.failures-table {
+.failures-table,
+.runs-table {
   width: 100%;
   border-collapse: collapse;
 }
 
 .failures-table th,
-.failures-table td {
+.failures-table td,
+.runs-table th,
+.runs-table td {
   padding: 1rem 1.15rem;
   text-align: left;
   vertical-align: top;
 }
 
-.failures-table th {
+.failures-table th,
+.runs-table th {
   border-bottom: 1px solid rgba(86, 89, 97, 0.16);
   font-size: 0.8rem;
   font-weight: 700;
@@ -90,7 +141,8 @@
   color: var(--muted-text-color);
 }
 
-.failures-table tbody tr + tr td {
+.failures-table tbody tr + tr td,
+.runs-table tbody tr + tr td {
   border-top: 1px solid rgba(86, 89, 97, 0.12);
 }
 
@@ -370,7 +422,9 @@
   }
 
   .failures-table th,
-  .failures-table td {
+  .failures-table td,
+  .runs-table th,
+  .runs-table td {
     padding: 0.9rem 0.8rem;
   }
 }
