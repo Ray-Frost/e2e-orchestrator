@@ -5,16 +5,8 @@ import { SmokeRunConfigService } from './smoke-run-config';
 export interface SmokeSuiteSummary {
   id: number;
   suite_name: string;
-}
-
-function toSmokeSuiteSummary(suiteRecord: {
-  id: number;
-  suite_name: string;
-}): SmokeSuiteSummary {
-  return {
-    id: suiteRecord.id,
-    suite_name: suiteRecord.suite_name,
-  };
+  command: string;
+  sut_base_url: string;
 }
 
 @Injectable()
@@ -72,8 +64,16 @@ export class SmokeSuiteService implements OnModuleInit {
 
   async getSingletonSuiteSummaries(): Promise<SmokeSuiteSummary[]> {
     const suiteRecord = await this.syncSingletonSuite();
+    const smokeRunConfig = this.smokeRunConfigService.getConfig();
 
-    return [toSmokeSuiteSummary(suiteRecord)];
+    return [
+      {
+        id: suiteRecord.id,
+        suite_name: suiteRecord.suite_name,
+        command: suiteRecord.command,
+        sut_base_url: smokeRunConfig.sutBaseUrl,
+      },
+    ];
   }
 
   async getSuiteById(suiteId: number) {
