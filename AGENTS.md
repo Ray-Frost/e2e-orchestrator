@@ -7,7 +7,7 @@ This document is a project map for contributors and coding agents working in thi
 - Use this file first to locate code and decide edit boundaries quickly.
 - Use `docs/README.md` as the default entrypoint and canonical root index for repository documentation under `docs/`.
 - Use `docs/specs/**` for feature-local planning assets once a slice has been decomposed out of `IMPLEMENTATION_GUIDE.md`. Within a feature directory, `spec.md` owns scope/behavior/acceptance, `plan.md` owns approach/impact/validation, and `tasks.md` is the execution breakdown that must stay consistent with the other two.
-- Use `IMPLEMENTATION_GUIDE.md` for platform-wide runtime behavior, workflow, API contract intent, and implementation constraints that have not yet been decomposed into `docs/specs/**`.
+- Use `IMPLEMENTATION_GUIDE.md` for platform boundaries, migration-entry guidance, and undecomposed follow-up capabilities that have not yet moved into `docs/specs/**`.
 - Use `apps/server/prisma/schema.prisma` as the source of truth for database models, enums, relations, and indexes.
 - If this file conflicts with those sources, use the conflict handling rule in `Priority of Truth`.
 - Read in this order when starting a task: topology -> capability map -> repository rules -> source-of-truth docs.
@@ -55,18 +55,21 @@ The tree below is intentionally selective. It highlights contributor-relevant ro
 
 ## Current Implementation Status
 
-- Backend is still mostly the NestJS starter skeleton (`main.ts`, `app.module.ts`) and does not yet implement planned business modules.
-- Frontend is still mostly the Vite React starter UI and does not yet implement planned pages.
+- Backend now includes implemented `runs` and `statistics` modules rather than only the Nest starter baseline.
+- Backend HTTP surfaces currently include `GET /api/suites`, `POST /api/runs`, `GET /api/runs`, `GET /api/runs/{id}`, `POST /api/runs/{id}/cancel`, and `GET /api/statistics/failures`.
+- Backend runtime also includes smoke-suite resolution, run scheduling, probe checks, results ingestion, and run-artifact persistence under `apps/server/src/runs/**`.
+- Frontend now ships operator pages for `/suites`, `/runs`, `/runs/:id`, and `/statistics/failures` under `apps/web/src`.
+- Frontend supports suite-triggered run creation, run-list polling, run cancellation entrypoints, run detail inspection, and failure-statistics browsing.
 - Current operating model: a single human maintainer uses coding agents heavily for implementation and review assistance.
-- `IMPLEMENTATION_GUIDE.md` defines the target platform behavior that is expected to be implemented incrementally in this repo and is being decomposed into `docs/specs/**` feature plans.
+- `IMPLEMENTATION_GUIDE.md` now acts as the platform boundary doc plus migration-entry map for capabilities already moved into `docs/specs/**`, while still holding undecomposed follow-up capabilities.
 - `docs/` provides the navigation layer for detailed process docs and ADR records without turning this file into a full doc index.
-- Runtime artifact folder `apps/server/artifacts/` is part of planned behavior and may be created during implementation or runtime.
-- Status snapshot date: `2026-03-16` (refresh this section when major code or tooling baselines change).
+- Runtime artifact folder `apps/server/artifacts/` is used by the implemented run-artifact persistence flow and may be created by runtime execution when missing.
+- Status snapshot date: `2026-04-06` (refresh this section when major code or tooling baselines change).
 
 ## Capability-to-Location Map (No Speculative Paths)
 
 - Backend runtime and API capabilities (`suites`, `runs`, `cancellations`, `logs`, `report`, `cases`, `statistics`, scheduler, executor, recovery): `apps/server/src`
-- Frontend pages and API consumption (`runs list`, `run detail`, `statistics`): `apps/web/src`
+- Frontend pages and API consumption (`suites`, `runs list`, `run detail`, `failure statistics`): `apps/web/src`
 - Database structure and indexes: `apps/server/prisma/schema.prisma`
 - Runtime artifact output root: `apps/server/artifacts/` (backend package, created at runtime)
 
@@ -192,7 +195,7 @@ Editing hygiene:
 1. Scope-based authority:
    - `apps/server/prisma/schema.prisma`: DB structure, enums, relations, indexes, and migration-facing data shape.
    - `docs/specs/**`: feature-local planning assets for capabilities that have been explicitly decomposed out of `IMPLEMENTATION_GUIDE.md`. Within one feature directory, `spec.md` owns scope/behavior/acceptance, `plan.md` owns implementation approach and validation strategy, and `tasks.md` operationalizes the work without overriding the other two.
-   - `IMPLEMENTATION_GUIDE.md`: platform-wide runtime behavior, API contracts, process semantics, and operational constraints that have not yet been decomposed into `docs/specs/**`.
+   - `IMPLEMENTATION_GUIDE.md`: platform boundaries, migration-entry guidance, and undecomposed follow-up capabilities that have not yet moved into `docs/specs/**`.
 2. Documentation governance and detail docs:
    - `docs/README.md`: canonical root structure and registration rules for the `docs/` subtree.
    - `docs/process/**`: detailed contributor-process and quality-gate rules.
@@ -210,6 +213,6 @@ Conflict handling rule:
   - conflicting statements with file and line references
   - expected impact or risk if unresolved
   - option A and B with a recommended option
-- Apply scope-based authority when proposing options: `apps/server/prisma/schema.prisma` for DB shape, then `docs/specs/**` when the affected capability has been decomposed there, then `IMPLEMENTATION_GUIDE.md` for undecomposed behavior and API, then fallback to runnable scripts or config.
+- Apply scope-based authority when proposing options: `apps/server/prisma/schema.prisma` for DB shape, then `docs/specs/**` when the affected capability has been decomposed there, then `IMPLEMENTATION_GUIDE.md` for undecomposed platform-level guidance or remaining follow-up capability notes, then fallback to runnable scripts or config.
 - Wait for explicit user approval before implementing conflict-dependent code and before updating this file.
 - After approval, implement the agreed resolution and update this file to restore consistency.

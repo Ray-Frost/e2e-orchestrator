@@ -3,48 +3,16 @@
 ## 1. 文档目标与范围
 
 本文件保留平台级、不随单个 feature spec 重复的约束。运行闭环的
-具体行为已迁移到：
-
-- [`docs/specs/001-run-artifact-persistence/`](./docs/specs/001-run-artifact-persistence/)
-- [`docs/specs/002-failure-statistics/`](./docs/specs/002-failure-statistics/)
-- [`docs/specs/003-external-smoke-run-loop/`](./docs/specs/003-external-smoke-run-loop/)
-- [`docs/specs/004-run-detail-page/`](./docs/specs/004-run-detail-page/)
-- [`docs/specs/005-suites-page/`](./docs/specs/005-suites-page/)
-- [`docs/specs/006-runs-page/`](./docs/specs/006-runs-page/)
-- [`docs/specs/007-run-cancel/`](./docs/specs/007-run-cancel/)
+具体迁移入口见下文 `## 3. 迁移入口`。
 
 ## 2. 平台边界
 
+- 平台运行保持单机、SQLite、低依赖模型。
 - `sut-demo` 和 `demo-test-lib` 保持在本仓库外，通过配置接入。
 - backend 负责 run 执行、产物、结果入库、和 statistics 数据源。
 - frontend 仅消费 backend API，不承载运行语义。
 
-## 3. 核心约束
-
-- 单机、SQLite、低依赖。
-- 并发上限固定为 `1`。
-- SQLite 写入必须启用 WAL，并保持同一 run 写入链路严格串行
-  `await`。
-- API、数据库、JSON 字段统一 snake_case。
-- 对外资源标识字段固定为 `id`（number）。
-- `case_results.test_lib_case_code` 是统计唯一主键，`case_title` 仅
-  用于展示。
-
-## 4. 运行状态、时间、reason
-
-- `created_at` 是唯一排队时间字段。
-- `start_time` 只在 probe 通过且 runner 进入 spawn 路径时写入。
-- `end_time` 和 `duration_ms` 只在终态收尾完成后写入。
-- 当前锁定的 `fail` reason 码仍是：
-  - `probe_failed`
-  - `cases_failed`
-  - `runner_exit_nonzero`
-  - `parse_or_write_error`
-- `timeout` 使用 `reason=timeout_exceeded`。
-- `cancelled` 使用 `reason=user_cancelled`。
-- `duration_ms` 仅在 `start_time` 和 `end_time` 都存在时写入。
-
-## 5. 迁移入口
+## 3. 迁移入口
 
 - 运行产物布局和 `meta.json` 规则见
   [`001-run-artifact-persistence`](./docs/specs/001-run-artifact-persistence/).
@@ -66,44 +34,13 @@
   `/runs/:id` 的取消入口见
   [`007-run-cancel`](./docs/specs/007-run-cancel/).
 
-## 6. API 约定
+## 4. 未拆分的后续能力
 
-- `GET /api/suites`
-- `POST /api/runs`
-- `GET /api/runs`
-- `GET /api/runs/{id}`
-- `POST /api/runs/{id}/cancel`
-- `GET /api/statistics/failures`
-
-统一错误体：
-
-```json
-{
-  "error": {
-    "message": "string"
-  }
-}
-```
-
-`400` 表示无效输入，`404` 表示资源不存在。
-
-## 7. DB 与 migration
-
-- 以 `apps/server/prisma/schema.prisma` 为唯一事实来源。
-- schema 变更必须同步 migration。
-- `Suite` 保持最小字段集，且 `suite_name` 为唯一。
-
-## 8. 未拆分的后续能力
-
-1. 排障链路：服务端日志与 `meta.json` 使用单一 `id` 语义；如需
-   资源上下文，使用 `run_id` / `suite_id` 命名。
-2. run cancel 能力已迁移到
-   [`007-run-cancel`](./docs/specs/007-run-cancel/).
-3. logs 接口（MVP）：`GET /api/runs/{id}/logs/stdout`，返回
+1. logs 接口（MVP）：`GET /api/runs/{id}/logs/stdout`，返回
    `lines(string[])`、`next_cursor`、`has_more`；`cursor` 为字节偏移
    整数。后续可扩展 `/logs/stderr`。
-4. report 接口行为：可 `302` 跳转或后端反向代理返回 HTML。
-5. 产物缺失访问语义：目标文件/目录不存在时 API 返回 `404`，页面
+2. report 接口行为：可 `302` 跳转或后端反向代理返回 HTML。
+3. 产物缺失访问语义：目标文件/目录不存在时 API 返回 `404`，页面
    提示“未生成/已被清理”。
 
 ### logs API 待定细则（实现前定稿）
