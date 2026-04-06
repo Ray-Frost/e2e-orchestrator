@@ -410,6 +410,26 @@
   color: #4e5460;
 }
 
+.artifact-stdout-panel {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 1rem;
+}
+
+.stdout-viewer {
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid rgba(86, 89, 97, 0.12);
+  border-radius: 1rem;
+  background: #172027;
+  color: #f3f7fb;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .summary-stats-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

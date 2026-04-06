@@ -33,21 +33,6 @@
 - run cancel API、`pending` / `running` 的取消语义、以及 `/runs` /
   `/runs/:id` 的取消入口见
   [`007-run-cancel`](./docs/specs/007-run-cancel/).
-
-## 4. 未拆分的后续能力
-
-1. logs 接口（MVP）：`GET /api/runs/{id}/logs/stdout`，返回
-   `lines(string[])`、`next_cursor`、`has_more`；`cursor` 为字节偏移
-   整数。后续可扩展 `/logs/stderr`。
-2. report 接口行为：可 `302` 跳转或后端反向代理返回 HTML。
-3. 产物缺失访问语义：目标文件/目录不存在时 API 返回 `404`，页面
-   提示“未生成/已被清理”。
-
-### logs API 待定细则（实现前定稿）
-
-1. `lines` 的切分规则（`\n` / `\r\n`、是否保留换行符）。
-2. `next_cursor` 的精确类型与 `null` 条件。
-3. `tail` 与 `cursor` 同时出现时的优先级规则。
-4. 日志正在写入时，最后一条“半行”的处理规则。
-5. 文本编码约定（默认 UTF-8 或其他）。
-6. 进入 logs API 开发前，先定稿以上细则，并同步单元/集成测试用例。
+- run stdout access、`GET /api/runs/{id}/stdout`、以及 `/runs/:id` 的
+  最小 stdout 查看入口见
+  [`008-run-stdout-access`](./docs/specs/008-run-stdout-access/).

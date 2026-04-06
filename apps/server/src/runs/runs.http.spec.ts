@@ -674,6 +674,117 @@ void test('GET /api/runs/{id} includes skipped case counts in result_summary', a
   });
 });
 
+void test('GET /api/runs/{id}/stdout returns full stdout as plain text', async (testContext) => {
+  const { app, prismaClient } = await createRunsHttpHarness(testContext);
+
+  const createdRun = await prismaClient.run.create({
+    data: {
+      suite_id: 1,
+      suite_name_snapshot: 'demo-smoke',
+      status: 'success',
+      reason: null,
+      exit_code: 0,
+      start_time: new Date('2026-03-20T12:00:02.000Z'),
+      end_time: new Date('2026-03-20T12:00:07.000Z'),
+      duration_ms: 5_000,
+      command: 'npm run test:smoke:platform',
+      cwd: '/tmp/demo-test-lib',
+      sut_base_url: 'http://localhost:3000',
+      probe_url: 'http://localhost:3000/',
+    },
+  });
+
+  const stdoutLogPath = resolveRunArtifactPaths(createdRun.id).stdoutLog;
+  await mkdir(path.dirname(stdoutLogPath), { recursive: true });
+  await writeFile(stdoutLogPath, 'first line\nsecond line\n', 'utf8');
+
+  const response = await createHttpRequest(app).get(
+    `/api/runs/${createdRun.id}/stdout`,
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers['content-type'], 'text/plain; charset=utf-8');
+  assert.equal(response.text, 'first line\nsecond line\n');
+});
+
+void test('GET /api/runs/{id}/stdout returns 200 with an empty body for empty stdout files', async (testContext) => {
+  const { app, prismaClient } = await createRunsHttpHarness(testContext);
+
+  const createdRun = await prismaClient.run.create({
+    data: {
+      suite_id: 1,
+      suite_name_snapshot: 'demo-smoke',
+      status: 'success',
+      reason: null,
+      exit_code: 0,
+      start_time: new Date('2026-03-20T12:00:02.000Z'),
+      end_time: new Date('2026-03-20T12:00:07.000Z'),
+      duration_ms: 5_000,
+      command: 'npm run test:smoke:platform',
+      cwd: '/tmp/demo-test-lib',
+      sut_base_url: 'http://localhost:3000',
+      probe_url: 'http://localhost:3000/',
+    },
+  });
+
+  const stdoutLogPath = resolveRunArtifactPaths(createdRun.id).stdoutLog;
+  await mkdir(path.dirname(stdoutLogPath), { recursive: true });
+  await writeFile(stdoutLogPath, '', 'utf8');
+
+  const response = await createHttpRequest(app).get(
+    `/api/runs/${createdRun.id}/stdout`,
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers['content-type'], 'text/plain; charset=utf-8');
+  assert.equal(response.text, '');
+});
+
+void test('GET /api/runs/{id}/stdout returns 404 for a missing run', async (testContext) => {
+  const { app } = await createRunsHttpHarness(testContext);
+
+  const response = await createHttpRequest(app).get('/api/runs/9999/stdout');
+
+  assert.equal(response.status, 404);
+  assert.deepEqual(response.body, {
+    error: {
+      message: 'Run 9999 was not found.',
+    },
+  });
+});
+
+void test('GET /api/runs/{id}/stdout returns 404 when stdout.log is missing', async (testContext) => {
+  const { app, prismaClient } = await createRunsHttpHarness(testContext);
+
+  const createdRun = await prismaClient.run.create({
+    data: {
+      suite_id: 1,
+      suite_name_snapshot: 'demo-smoke',
+      status: 'fail',
+      reason: 'probe_failed',
+      exit_code: null,
+      start_time: null,
+      end_time: null,
+      duration_ms: null,
+      command: 'npm run test:smoke:platform',
+      cwd: '/tmp/demo-test-lib',
+      sut_base_url: 'http://localhost:3000',
+      probe_url: 'http://localhost:3000/',
+    },
+  });
+
+  const response = await createHttpRequest(app).get(
+    `/api/runs/${createdRun.id}/stdout`,
+  );
+
+  assert.equal(response.status, 404);
+  assert.deepEqual(response.body, {
+    error: {
+      message: `stdout.log for run ${createdRun.id} was not generated or is no longer present.`,
+    },
+  });
+});
+
 void test('GET /api/runs returns newest-first summaries for runs with different terminal outcomes', async (testContext) => {
   const { app, prismaClient } = await createRunsHttpHarness(testContext, {
     runnerMode: 'success',

@@ -7,6 +7,7 @@ export const runDetailRoutePattern = '/runs/:id';
 
 const defaultRunDetailErrorMessage = 'Failed to load run detail.';
 const defaultCancelRunErrorMessage = 'Failed to cancel run.';
+const defaultStdoutErrorMessage = 'Failed to load stdout.';
 const runDetailPollingIntervalMs = 2_000;
 
 type RunStatus =
@@ -86,6 +87,22 @@ type RunActionFeedback = {
   message: string;
 };
 
+type RunStdoutState =
+  | {
+      status: 'idle';
+    }
+  | {
+      status: 'loading';
+    }
+  | {
+      status: 'ready';
+      content: string;
+    }
+  | {
+      status: 'error';
+      message: string;
+    };
+
 class RunDetailNotFoundError extends Error {}
 
 function isPositiveInteger(value: string | undefined): value is string {
@@ -118,6 +135,18 @@ async function fetchRunDetail(runId: string, signal?: AbortSignal) {
   }
 
   return normalizeRunDetail((await response.json()) as RunDetailResponseBody);
+}
+
+async function fetchRunStdout(runId: string) {
+  const response = await fetch(`/api/runs/${runId}/stdout`);
+
+  if (!response.ok) {
+    throw new Error(
+      await readApiErrorMessage(response, defaultStdoutErrorMessage),
+    );
+  }
+
+  return response.text();
 }
 
 function shouldPollRunStatus(status: RunStatus) {
@@ -211,7 +240,15 @@ function renderDetailFieldList(fields: DetailField[]) {
   );
 }
 
-function RunDetailSections({ runDetail }: { runDetail: RunDetail }) {
+function RunDetailSections({
+  runDetail,
+  runStdoutState,
+  onViewStdout,
+}: {
+  runDetail: RunDetail;
+  runStdoutState: RunStdoutState;
+  onViewStdout: () => void;
+}) {
   const overviewFields: DetailField[] = [
     {
       label: 'Suite',
@@ -304,6 +341,8 @@ function RunDetailSections({ runDetail }: { runDetail: RunDetail }) {
       isAvailable: runDetail.artifacts.report_dir,
     },
   ];
+  const shouldShowStdoutPanel =
+    runDetail.artifacts.stdout_log || runStdoutState.status !== 'idle';
 
   return (
     <>
@@ -332,8 +371,8 @@ function RunDetailSections({ runDetail }: { runDetail: RunDetail }) {
         <section className="detail-panel">
           <h2>Artifacts</h2>
           <p className="section-summary">
-            Availability only in this slice. Logs, report access, and downloads
-            stay out of scope here.
+            Check which run artifacts were recorded and open stdout when you
+            need the raw runner output.
           </p>
           <ul className="artifact-list">
             {artifactRows.map((artifactRow) => (
@@ -351,6 +390,37 @@ function RunDetailSections({ runDetail }: { runDetail: RunDetail }) {
               </li>
             ))}
           </ul>
+          {shouldShowStdoutPanel ? (
+            <div className="artifact-stdout-panel">
+              <div className="detail-action-row">
+                {runDetail.artifacts.stdout_log ? (
+                  <button
+                    className="inline-action-button"
+                    disabled={runStdoutState.status === 'loading'}
+                    onClick={onViewStdout}
+                    type="button"
+                  >
+                    {runStdoutState.status === 'loading'
+                      ? 'Loading stdout...'
+                      : 'View stdout'}
+                  </button>
+                ) : null}
+                <p className="empty-detail-copy">
+                  Open the captured stdout output for this run.
+                </p>
+              </div>
+              {runStdoutState.status === 'error' ? (
+                <p className="inline-action-feedback inline-action-feedback-error">
+                  {runStdoutState.message}
+                </p>
+              ) : null}
+              {runStdoutState.status === 'ready' ? (
+                <pre aria-label="Run stdout" className="stdout-viewer">
+                  {runStdoutState.content}
+                </pre>
+              ) : null}
+            </div>
+          ) : null}
         </section>
         <section className="detail-panel">
           <h2>Result summary</h2>
@@ -397,11 +467,17 @@ export function RunDetailPage() {
   const [isCancellingRun, setIsCancellingRun] = useState(false);
   const [runActionFeedback, setRunActionFeedback] =
     useState<RunActionFeedback | null>(null);
+  const [runStdoutState, setRunStdoutState] = useState<RunStdoutState>({
+    status: 'idle',
+  });
 
   useEffect(() => {
     startTransition(() => {
       setIsCancellingRun(false);
       setRunActionFeedback(null);
+      setRunStdoutState({
+        status: 'idle',
+      });
     });
 
     if (!isPositiveInteger(runId)) {
@@ -587,6 +663,55 @@ export function RunDetailPage() {
     }
   }
 
+  async function handleViewStdout() {
+    if (
+      pageState.status !== 'ready' ||
+      !isCurrentRouteState ||
+      !pageState.runDetail.artifacts.stdout_log ||
+      runStdoutState.status === 'loading'
+    ) {
+      return;
+    }
+
+    const activeRunId = pageState.runDetail.id;
+    const activeRoutePath = `/runs/${routeRunId}`;
+
+    startTransition(() => {
+      setRunStdoutState({
+        status: 'loading',
+      });
+    });
+
+    try {
+      const stdoutContent = await fetchRunStdout(String(activeRunId));
+
+      if (window.location.pathname !== activeRoutePath) {
+        return;
+      }
+
+      startTransition(() => {
+        setRunStdoutState({
+          status: 'ready',
+          content: stdoutContent,
+        });
+      });
+    } catch (error) {
+      if (window.location.pathname !== activeRoutePath) {
+        return;
+      }
+
+      const message =
+        error instanceof Error ? error.message : defaultStdoutErrorMessage;
+
+      startTransition(() => {
+        setRunStdoutState({
+          status: 'error',
+          message,
+        });
+      });
+    }
+  }
+
   return (
     <main className="app-shell">
       <header className="page-header">
@@ -650,7 +775,13 @@ export function RunDetailPage() {
               ) : null}
             </section>
           ) : null}
-          <RunDetailSections runDetail={pageState.runDetail} />
+          <RunDetailSections
+            onViewStdout={() => {
+              void handleViewStdout();
+            }}
+            runDetail={pageState.runDetail}
+            runStdoutState={runStdoutState}
+          />
         </>
       ) : null}
     </main>

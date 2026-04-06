@@ -45,3 +45,5 @@ This directory stores feature-level planning assets extracted from
 - [`007-run-cancel/`](./007-run-cancel/): backend
   `POST /api/runs/{id}/cancel`, scheduler-backed cancellation of active runs,
   and cancel entrypoints on `/runs` plus `/runs/:id`.
+- [`008-run-stdout-access/`](./008-run-stdout-access/): backend raw stdout
+  access and minimal stdout entrypoints on `/runs/:id`.

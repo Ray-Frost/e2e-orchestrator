@@ -75,6 +75,15 @@ function createJsonResponse(body: unknown, status = 200) {
   });
 }
 
+function createTextResponse(body: string, status = 200) {
+  return new Response(body, {
+    status,
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+    },
+  });
+}
+
 function createSuiteSummaryResponse(
   overrides: Partial<SuiteSummaryResponse> = {},
 ): SuiteSummaryResponse {
@@ -1419,11 +1428,75 @@ test('renders artifact availability and summary-unavailable copy for runs withou
   ).toBeInTheDocument();
   expect(
     screen.getByText(
-      'Availability only in this slice. Logs, report access, and downloads stay out of scope here.',
+      'Check which run artifacts were recorded and open stdout when you need the raw runner output.',
     ),
   ).toBeInTheDocument();
   expect(screen.getAllByText('Not available')).toHaveLength(4);
   expect(screen.getAllByText('Not recorded for this run.')).toHaveLength(4);
+  expect(
+    screen.queryByRole('button', { name: 'View stdout' }),
+  ).not.toBeInTheDocument();
+});
+
+test('lazily loads and renders raw stdout from /runs/:id', async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(createJsonResponse(createRunDetailResponse()))
+    .mockResolvedValueOnce(createTextResponse('stdout line 1\nstdout line 2'));
+
+  vi.stubGlobal('fetch', fetchMock);
+
+  renderAppAtRoute('/runs/12');
+
+  const user = userEvent.setup();
+  const viewStdoutButton = await screen.findByRole('button', {
+    name: 'View stdout',
+  });
+
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(screen.queryByLabelText('Run stdout')).not.toBeInTheDocument();
+
+  await user.click(viewStdoutButton);
+
+  expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/runs/12/stdout');
+  expect(await screen.findByLabelText('Run stdout')).toHaveTextContent(
+    /stdout line 1\s+stdout line 2/,
+  );
+  expect(screen.getByText('Overview')).toBeInTheDocument();
+});
+
+test('shows local stdout errors on /runs/:id without hiding the ready state', async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(createJsonResponse(createRunDetailResponse()))
+    .mockResolvedValueOnce(
+      createJsonResponse(
+        {
+          error: {
+            message:
+              'stdout.log for run 12 was not generated or is no longer present.',
+          },
+        },
+        404,
+      ),
+    );
+
+  vi.stubGlobal('fetch', fetchMock);
+
+  renderAppAtRoute('/runs/12');
+
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole('button', { name: 'View stdout' }));
+
+  expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/runs/12/stdout');
+  expect(
+    await screen.findByText(
+      'stdout.log for run 12 was not generated or is no longer present.',
+    ),
+  ).toBeInTheDocument();
+  expect(screen.getByText('Overview')).toBeInTheDocument();
+  expect(screen.getByText('demo-smoke')).toBeInTheDocument();
+  expect(screen.queryByLabelText('Run stdout')).not.toBeInTheDocument();
 });
 
 test('treats a missing result_summary field as summary unavailable', async () => {
