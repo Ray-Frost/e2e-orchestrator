@@ -5,9 +5,9 @@ This document is a project map for contributors and coding agents working in thi
 ## How to Use This Map
 
 - Use this file first to locate code and decide edit boundaries quickly.
+- Use `README.md` as the human-friendly repository entrypoint for setup, current capabilities, and docs navigation.
 - Use `docs/README.md` as the default entrypoint and canonical root index for repository documentation under `docs/`.
-- Use `docs/specs/**` for feature-local planning assets once a slice has been decomposed out of `IMPLEMENTATION_GUIDE.md`. Within a feature directory, `spec.md` owns scope/behavior/acceptance, `plan.md` owns approach/impact/validation, and `tasks.md` is the execution breakdown that must stay consistent with the other two.
-- Use `IMPLEMENTATION_GUIDE.md` for platform boundaries, migration-entry guidance, and undecomposed follow-up capabilities that have not yet moved into `docs/specs/**`.
+- Use `docs/specs/**` for feature-local planning assets within their declared scope. Within a feature directory, `spec.md` owns scope/behavior/acceptance, `plan.md` owns approach/impact/validation, and `tasks.md` is the execution breakdown that must stay consistent with the other two.
 - Use `apps/server/prisma/schema.prisma` as the source of truth for database models, enums, relations, and indexes.
 - If this file conflicts with those sources, use the conflict handling rule in `Priority of Truth`.
 - Read in this order when starting a task: topology -> capability map -> repository rules -> source-of-truth docs.
@@ -40,8 +40,8 @@ The tree below is intentionally selective. It highlights contributor-relevant ro
 ├─ docs/                       # Repository documentation subtree (root index: docs/README.md)
 │  ├─ process/                 # Contributor workflow and quality-gate docs
 │  ├─ design-docs/             # ADRs and architecture history
-│  └─ specs/                   # Feature-level planning assets extracted from IMPLEMENTATION_GUIDE.md
-├─ IMPLEMENTATION_GUIDE.md     # Implementation plan and constraints
+│  └─ specs/                   # Feature-level planning assets and scoped behavior docs
+├─ README.md                   # Human-facing repository entrypoint
 ├─ package.json                # Workspace-level scripts
 └─ pnpm-workspace.yaml         # Workspace package boundaries
 ```
@@ -61,7 +61,7 @@ The tree below is intentionally selective. It highlights contributor-relevant ro
 - Frontend now ships operator pages for `/suites`, `/runs`, `/runs/:id`, and `/statistics/failures` under `apps/web/src`.
 - Frontend supports suite-triggered run creation, run-list polling, run cancellation entrypoints, run detail inspection, and failure-statistics browsing.
 - Current operating model: a single human maintainer uses coding agents heavily for implementation and review assistance.
-- `IMPLEMENTATION_GUIDE.md` now acts as the platform boundary doc plus migration-entry map for capabilities already moved into `docs/specs/**`, while still holding undecomposed follow-up capabilities.
+- Root `README.md` is the human-friendly entrypoint for setup and repository orientation.
 - `docs/` provides the navigation layer for detailed process docs and ADR records without turning this file into a full doc index.
 - Runtime artifact folder `apps/server/artifacts/` is used by the implemented run-artifact persistence flow and may be created by runtime execution when missing.
 - Status snapshot date: `2026-04-06` (refresh this section when major code or tooling baselines change).
@@ -150,7 +150,7 @@ CI and release workflows:
 
 - Start docs discovery from `docs/README.md`.
 - Use `docs/README.md` for the canonical root `docs/` structure, registered doc areas, and maintenance rules.
-- Treat `docs/specs/**` as the home for feature-local planning assets once a capability has been decomposed out of `IMPLEMENTATION_GUIDE.md`.
+- Treat `docs/specs/**` as the home for feature-local planning assets and scoped behavior docs.
 - Treat `docs/design-docs/**` as the home for ADRs and architecture decision history.
 - Keep this file focused on repository navigation and edit boundaries. See `Repository Rules` for scope guardrails.
 
@@ -166,11 +166,11 @@ Edit preferred:
 
 - `apps/server/src/**`
 - `apps/web/src/**`
+- `README.md` when intentionally updating repository onboarding or navigation
 - root-level project configs when needed (`package.json`, `pnpm-workspace.yaml`, etc.)
 - root-level quality gates and tooling configs (eslint/prettier/hook configs, lint-staged, task scripts)
 - Prisma schema and migration assets required by implementation tasks
 - `apps/server/prisma/schema.prisma`
-- `IMPLEMENTATION_GUIDE.md` (only when intentionally updating plan text)
 - `docs/README.md` when updating the root docs navigation model
 - `docs/specs/**` when intentionally adding or revising feature-level planning assets
 - `docs/process/**` when intentionally updating process or quality-gate documentation
@@ -194,9 +194,9 @@ Editing hygiene:
 
 1. Scope-based authority:
    - `apps/server/prisma/schema.prisma`: DB structure, enums, relations, indexes, and migration-facing data shape.
-   - `docs/specs/**`: feature-local planning assets for capabilities that have been explicitly decomposed out of `IMPLEMENTATION_GUIDE.md`. Within one feature directory, `spec.md` owns scope/behavior/acceptance, `plan.md` owns implementation approach and validation strategy, and `tasks.md` operationalizes the work without overriding the other two.
-   - `IMPLEMENTATION_GUIDE.md`: platform boundaries, migration-entry guidance, and undecomposed follow-up capabilities that have not yet moved into `docs/specs/**`.
+   - `docs/specs/**`: feature-local planning assets within their declared scope. Within one feature directory, `spec.md` owns scope/behavior/acceptance, `plan.md` owns implementation approach and validation strategy, and `tasks.md` operationalizes the work without overriding the other two.
 2. Documentation governance and detail docs:
+   - `README.md`: human-facing repository entrypoint for setup and navigation.
    - `docs/README.md`: canonical root structure and registration rules for the `docs/` subtree.
    - `docs/process/**`: detailed contributor-process and quality-gate rules.
    - `docs/design-docs/**`: ADRs and accepted architecture decision history.
@@ -213,6 +213,6 @@ Conflict handling rule:
   - conflicting statements with file and line references
   - expected impact or risk if unresolved
   - option A and B with a recommended option
-- Apply scope-based authority when proposing options: `apps/server/prisma/schema.prisma` for DB shape, then `docs/specs/**` when the affected capability has been decomposed there, then `IMPLEMENTATION_GUIDE.md` for undecomposed platform-level guidance or remaining follow-up capability notes, then fallback to runnable scripts or config.
+- Apply scope-based authority when proposing options: `apps/server/prisma/schema.prisma` for DB shape, then `docs/specs/**` when the affected capability has scoped planning docs, then fallback to documentation governance docs and runnable scripts or config.
 - Wait for explicit user approval before implementing conflict-dependent code and before updating this file.
 - After approval, implement the agreed resolution and update this file to restore consistency.
