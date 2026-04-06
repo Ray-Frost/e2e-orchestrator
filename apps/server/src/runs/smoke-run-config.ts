@@ -10,6 +10,22 @@ export interface SmokeRunConfig {
   timeoutMs: number;
 }
 
+export interface SmokeSuiteSeed {
+  suiteName: string;
+  command: string;
+}
+
+const extraSmokeSuiteSeeds: SmokeSuiteSeed[] = [
+  {
+    suiteName: 'demo-smoke-30-second-case',
+    command: 'npm run test:smoke:platform:with-30-second-case',
+  },
+  {
+    suiteName: 'demo-smoke-with-failure',
+    command: 'npm run test:smoke:platform:with-failure',
+  },
+];
+
 function readTrimmedEnvValue(
   env: NodeJS.ProcessEnv,
   key: string,
@@ -89,6 +105,28 @@ export function loadSmokeRunConfig(
     timeoutMinutes,
     timeoutMs: timeoutMinutes * 60 * 1000,
   };
+}
+
+export function buildConfiguredSmokeSuites(
+  smokeRunConfig: SmokeRunConfig,
+): SmokeSuiteSeed[] {
+  const configuredSuites = [
+    {
+      suiteName: smokeRunConfig.suiteName,
+      command: smokeRunConfig.command,
+    },
+    ...extraSmokeSuiteSeeds,
+  ];
+  const seenSuiteNames = new Set<string>();
+
+  return configuredSuites.filter((configuredSuite) => {
+    if (seenSuiteNames.has(configuredSuite.suiteName)) {
+      return false;
+    }
+
+    seenSuiteNames.add(configuredSuite.suiteName);
+    return true;
+  });
 }
 
 @Injectable()

@@ -1,10 +1,12 @@
 import type { case_status, run_status } from '@prisma/client';
 
+export type RunStatus = run_status;
+
 export interface RunSummary {
   id: number;
   suite_id: number;
   suite_name: string;
-  status: run_status;
+  status: RunStatus;
   reason: string | null;
   exit_code: number | null;
   created_at: Date;
@@ -48,7 +50,7 @@ export interface RunExecutionContext {
   id: number;
   suite_id: number;
   suite_name_snapshot: string;
-  status: string;
+  status: RunStatus;
   reason: string | null;
   exit_code: number | null;
   created_at: Date;

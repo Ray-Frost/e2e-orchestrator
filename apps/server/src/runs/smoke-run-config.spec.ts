@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { loadSmokeRunConfig } from './smoke-run-config';
+import {
+  buildConfiguredSmokeSuites,
+  loadSmokeRunConfig,
+} from './smoke-run-config';
 
 void test('loadSmokeRunConfig applies the smoke-suite defaults', () => {
   const config = loadSmokeRunConfig({
@@ -16,6 +19,29 @@ void test('loadSmokeRunConfig applies the smoke-suite defaults', () => {
     timeoutMinutes: 10,
     timeoutMs: 10 * 60 * 1000,
   });
+});
+
+void test('buildConfiguredSmokeSuites includes the default and debug suites', () => {
+  const configuredSuites = buildConfiguredSmokeSuites(
+    loadSmokeRunConfig({
+      E2E_SMOKE_CWD: '/tmp/demo-test-lib',
+    } as NodeJS.ProcessEnv),
+  );
+
+  assert.deepEqual(configuredSuites, [
+    {
+      suiteName: 'demo-smoke',
+      command: 'npm run test:smoke:platform',
+    },
+    {
+      suiteName: 'demo-smoke-30-second-case',
+      command: 'npm run test:smoke:platform:with-30-second-case',
+    },
+    {
+      suiteName: 'demo-smoke-with-failure',
+      command: 'npm run test:smoke:platform:with-failure',
+    },
+  ]);
 });
 
 void test('loadSmokeRunConfig requires E2E_SMOKE_CWD', () => {

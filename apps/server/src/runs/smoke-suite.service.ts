@@ -1,12 +1,22 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { SmokeRunConfigService } from './smoke-run-config';
+import {
+  buildConfiguredSmokeSuites,
+  SmokeRunConfigService,
+  type SmokeSuiteSeed,
+} from './smoke-run-config';
 
 export interface SmokeSuiteSummary {
   id: number;
   suite_name: string;
   command: string;
   sut_base_url: string;
+}
+
+interface SmokeSuiteRecord {
+  id: number;
+  suite_name: string;
+  command: string;
 }
 
 @Injectable()
@@ -19,70 +29,66 @@ export class SmokeSuiteService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    await this.syncSingletonSuite();
+    await this.syncConfiguredSuites();
   }
 
-  async syncSingletonSuite() {
+  private getConfiguredSuiteSeeds(): SmokeSuiteSeed[] {
     const smokeRunConfig = this.smokeRunConfigService.getConfig();
 
+    return buildConfiguredSmokeSuites(smokeRunConfig);
+  }
+
+  async syncConfiguredSuites(): Promise<SmokeSuiteRecord[]> {
+    const configuredSuiteSeeds = this.getConfiguredSuiteSeeds();
+
     return this.prismaService.$transaction(async (transactionPrisma) => {
-      const canonicalSuite = await transactionPrisma.suite.upsert({
-        where: {
-          suite_name: smokeRunConfig.suiteName,
-        },
-        create: {
-          suite_name: smokeRunConfig.suiteName,
-          command: smokeRunConfig.command,
-        },
-        update: {
-          command: smokeRunConfig.command,
-        },
-      });
+      const configuredSuiteRecords: SmokeSuiteRecord[] = [];
 
-      await transactionPrisma.run.updateMany({
-        where: {
-          suite_id: {
-            not: canonicalSuite.id,
+      for (const configuredSuiteSeed of configuredSuiteSeeds) {
+        const configuredSuiteRecord = (await transactionPrisma.suite.upsert({
+          where: {
+            suite_name: configuredSuiteSeed.suiteName,
           },
-        },
-        data: {
-          suite_id: canonicalSuite.id,
-        },
-      });
-
-      await transactionPrisma.suite.deleteMany({
-        where: {
-          id: {
-            not: canonicalSuite.id,
+          create: {
+            suite_name: configuredSuiteSeed.suiteName,
+            command: configuredSuiteSeed.command,
           },
-        },
-      });
+          update: {
+            command: configuredSuiteSeed.command,
+          },
+          select: {
+            id: true,
+            suite_name: true,
+            command: true,
+          },
+        })) as SmokeSuiteRecord;
 
-      return canonicalSuite;
+        configuredSuiteRecords.push(configuredSuiteRecord);
+      }
+
+      return configuredSuiteRecords;
     });
   }
 
-  async getSingletonSuiteSummaries(): Promise<SmokeSuiteSummary[]> {
-    const suiteRecord = await this.syncSingletonSuite();
+  async getSuiteSummaries(): Promise<SmokeSuiteSummary[]> {
+    const suiteRecords = await this.syncConfiguredSuites();
     const smokeRunConfig = this.smokeRunConfigService.getConfig();
 
-    return [
-      {
-        id: suiteRecord.id,
-        suite_name: suiteRecord.suite_name,
-        command: suiteRecord.command,
-        sut_base_url: smokeRunConfig.sutBaseUrl,
-      },
-    ];
+    return suiteRecords.map((suiteRecord) => ({
+      id: suiteRecord.id,
+      suite_name: suiteRecord.suite_name,
+      command: suiteRecord.command,
+      sut_base_url: smokeRunConfig.sutBaseUrl,
+    }));
   }
 
   async getSuiteById(suiteId: number) {
-    const suiteRecord = await this.syncSingletonSuite();
+    const configuredSuiteRecords = await this.syncConfiguredSuites();
 
-    if (suiteRecord.id !== suiteId) {
-      return null;
-    }
-
-    return suiteRecord;
+    return (
+      configuredSuiteRecords.find(
+        (configuredSuiteRecord) => configuredSuiteRecord.id === suiteId,
+      ) ?? null
+    );
   }
 }

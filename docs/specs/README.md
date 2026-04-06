@@ -42,3 +42,6 @@ This directory stores feature-level planning assets extracted from
 - [`006-runs-page/`](./006-runs-page/): frontend `/runs` operator page,
   low-concurrency polling for active runs, and peer navigation among the
   top-level operator pages.
+- [`007-run-cancel/`](./007-run-cancel/): backend
+  `POST /api/runs/{id}/cancel`, scheduler-backed cancellation of active runs,
+  and cancel entrypoints on `/runs` plus `/runs/:id`.

@@ -6,6 +6,7 @@ import { OperatorNavigation } from './operator-navigation';
 export const runDetailRoutePattern = '/runs/:id';
 
 const defaultRunDetailErrorMessage = 'Failed to load run detail.';
+const defaultCancelRunErrorMessage = 'Failed to cancel run.';
 const runDetailPollingIntervalMs = 2_000;
 
 type RunStatus =
@@ -80,6 +81,13 @@ type DetailField = {
   valueClassName?: string;
 };
 
+type RunActionFeedback = {
+  status: 'error';
+  message: string;
+};
+
+class RunDetailNotFoundError extends Error {}
+
 function isPositiveInteger(value: string | undefined): value is string {
   return value !== undefined && /^[1-9][0-9]*$/.test(value);
 }
@@ -89,6 +97,27 @@ function normalizeRunDetail(responseBody: RunDetailResponseBody): RunDetail {
     ...responseBody,
     result_summary: responseBody.result_summary ?? null,
   };
+}
+
+async function fetchRunDetail(runId: string, signal?: AbortSignal) {
+  const response = await fetch(
+    `/api/runs/${runId}`,
+    signal === undefined ? undefined : { signal },
+  );
+
+  if (response.status === 404) {
+    throw new RunDetailNotFoundError(
+      await readApiErrorMessage(response, defaultRunDetailErrorMessage),
+    );
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      await readApiErrorMessage(response, defaultRunDetailErrorMessage),
+    );
+  }
+
+  return normalizeRunDetail((await response.json()) as RunDetailResponseBody);
 }
 
 function shouldPollRunStatus(status: RunStatus) {
@@ -278,11 +307,6 @@ function RunDetailSections({ runDetail }: { runDetail: RunDetail }) {
 
   return (
     <>
-      {shouldPollRunStatus(runDetail.status) ? (
-        <section className="status-panel">
-          <p>Auto-refreshing every 2 seconds while this run is active.</p>
-        </section>
-      ) : null}
       <div className="detail-grid">
         <section className="detail-panel">
           <h2>Overview</h2>
@@ -370,8 +394,16 @@ export function RunDetailPage() {
   const [pageState, setPageState] = useState<RunDetailPageState>({
     status: 'loading',
   });
+  const [isCancellingRun, setIsCancellingRun] = useState(false);
+  const [runActionFeedback, setRunActionFeedback] =
+    useState<RunActionFeedback | null>(null);
 
   useEffect(() => {
+    startTransition(() => {
+      setIsCancellingRun(false);
+      setRunActionFeedback(null);
+    });
+
     if (!isPositiveInteger(runId)) {
       startTransition(() => {
         setPageState({
@@ -383,6 +415,7 @@ export function RunDetailPage() {
       return;
     }
 
+    const validatedRunId = runId;
     const abortController = new AbortController();
     let pollingTimeoutId: number | null = null;
     let lastObservedRunDetail: RunDetail | null = null;
@@ -409,38 +442,9 @@ export function RunDetailPage() {
 
     async function loadRunDetail() {
       try {
-        const response = await fetch(`/api/runs/${runId}`, {
-          signal: abortController.signal,
-        });
-
-        if (response.status === 404) {
-          const message = await readApiErrorMessage(
-            response,
-            defaultRunDetailErrorMessage,
-          );
-
-          if (abortController.signal.aborted) {
-            return;
-          }
-
-          startTransition(() => {
-            setPageState({
-              status: 'not_found',
-              route_run_id: routeRunId,
-              message,
-            });
-          });
-          return;
-        }
-
-        if (!response.ok) {
-          throw new Error(
-            await readApiErrorMessage(response, defaultRunDetailErrorMessage),
-          );
-        }
-
-        const responseBody = normalizeRunDetail(
-          (await response.json()) as RunDetailResponseBody,
+        const responseBody = await fetchRunDetail(
+          validatedRunId,
+          abortController.signal,
         );
 
         if (abortController.signal.aborted) {
@@ -462,6 +466,17 @@ export function RunDetailPage() {
         }
       } catch (error) {
         if (abortController.signal.aborted) {
+          return;
+        }
+
+        if (error instanceof RunDetailNotFoundError) {
+          startTransition(() => {
+            setPageState({
+              status: 'not_found',
+              route_run_id: routeRunId,
+              message: error.message,
+            });
+          });
           return;
         }
 
@@ -501,6 +516,77 @@ export function RunDetailPage() {
     pageState.status === 'loading' ||
     ('route_run_id' in pageState && pageState.route_run_id === routeRunId);
 
+  async function handleCancelRun() {
+    if (
+      pageState.status !== 'ready' ||
+      !isCurrentRouteState ||
+      !shouldPollRunStatus(pageState.runDetail.status) ||
+      isCancellingRun
+    ) {
+      return;
+    }
+
+    if (!window.confirm(`Cancel run ${pageState.runDetail.id}?`)) {
+      return;
+    }
+
+    const activeRunId = pageState.runDetail.id;
+    const activeRoutePath = `/runs/${routeRunId}`;
+
+    setIsCancellingRun(true);
+    setRunActionFeedback(null);
+
+    try {
+      const cancelResponse = await fetch(`/api/runs/${activeRunId}/cancel`, {
+        method: 'POST',
+      });
+
+      if (!cancelResponse.ok) {
+        throw new Error(
+          await readApiErrorMessage(
+            cancelResponse,
+            defaultCancelRunErrorMessage,
+          ),
+        );
+      }
+
+      const refreshedRunDetail = await fetchRunDetail(String(activeRunId));
+
+      if (window.location.pathname !== activeRoutePath) {
+        return;
+      }
+
+      startTransition(() => {
+        setPageState({
+          status: 'ready',
+          route_run_id: routeRunId,
+          runDetail: refreshedRunDetail,
+        });
+        setRunActionFeedback(null);
+      });
+    } catch (error) {
+      if (window.location.pathname !== activeRoutePath) {
+        return;
+      }
+
+      const message =
+        error instanceof Error ? error.message : defaultCancelRunErrorMessage;
+
+      startTransition(() => {
+        setRunActionFeedback({
+          status: 'error',
+          message,
+        });
+      });
+    } finally {
+      if (window.location.pathname === activeRoutePath) {
+        startTransition(() => {
+          setIsCancellingRun(false);
+        });
+      }
+    }
+  }
+
   return (
     <main className="app-shell">
       <header className="page-header">
@@ -508,8 +594,8 @@ export function RunDetailPage() {
         <p className="page-eyebrow">Runs</p>
         <h1>{`Run ${routeRunId}`}</h1>
         <p className="page-summary">
-          Read-only detail for one recorded run, focused on observation instead
-          of control actions.
+          Inspect one recorded run, cancel active work when needed, and keep the
+          stored execution context in view while the status settles.
         </p>
       </header>
       {pageState.status === 'loading' || !isCurrentRouteState ? (
@@ -528,7 +614,44 @@ export function RunDetailPage() {
         </section>
       ) : null}
       {pageState.status === 'ready' && isCurrentRouteState ? (
-        <RunDetailSections runDetail={pageState.runDetail} />
+        <>
+          {shouldPollRunStatus(pageState.runDetail.status) ||
+          runActionFeedback?.status === 'error' ? (
+            <section
+              className={
+                runActionFeedback?.status === 'error'
+                  ? 'status-panel status-panel-error'
+                  : 'status-panel status-panel-info'
+              }
+            >
+              <div className="detail-action-row">
+                <p>
+                  {shouldPollRunStatus(pageState.runDetail.status)
+                    ? 'Auto-refreshing every 2 seconds while this run is active.'
+                    : runActionFeedback?.message}
+                </p>
+                {shouldPollRunStatus(pageState.runDetail.status) ? (
+                  <button
+                    className="inline-action-button"
+                    disabled={isCancellingRun}
+                    onClick={() => {
+                      void handleCancelRun();
+                    }}
+                    type="button"
+                  >
+                    {isCancellingRun ? 'Cancelling...' : 'Cancel run'}
+                  </button>
+                ) : null}
+              </div>
+              {runActionFeedback?.status === 'error' ? (
+                <p className="inline-action-feedback inline-action-feedback-error">
+                  {runActionFeedback.message}
+                </p>
+              ) : null}
+            </section>
+          ) : null}
+          <RunDetailSections runDetail={pageState.runDetail} />
+        </>
       ) : null}
     </main>
   );

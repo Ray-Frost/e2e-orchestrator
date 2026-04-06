@@ -105,7 +105,7 @@ async function createFailureStatisticsHttpHarness(
 
   if (options.initializeTestDatabaseSchema === false) {
     moduleBuilder.overrideProvider(SmokeSuiteService).useValue({
-      getSingletonSuiteSummaries: () => [],
+      getSuiteSummaries: () => [],
       getSuiteById: () => null,
     });
   }
