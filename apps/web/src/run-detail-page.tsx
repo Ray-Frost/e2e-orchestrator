@@ -371,8 +371,8 @@ function RunDetailSections({
         <section className="detail-panel">
           <h2>Artifacts</h2>
           <p className="section-summary">
-            Availability stays explicit in this slice. Raw stdout can be opened
-            here, while stderr, report access, and downloads stay out of scope.
+            Check which run artifacts were recorded and open stdout when you
+            need the raw runner output.
           </p>
           <ul className="artifact-list">
             {artifactRows.map((artifactRow) => (
@@ -406,8 +406,7 @@ function RunDetailSections({
                   </button>
                 ) : null}
                 <p className="empty-detail-copy">
-                  Whole-file stdout only. Filtering, searching, streaming, and
-                  stderr stay out of scope in this slice.
+                  Open the captured stdout output for this run.
                 </p>
               </div>
               {runStdoutState.status === 'error' ? (

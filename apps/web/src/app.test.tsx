@@ -1428,7 +1428,7 @@ test('renders artifact availability and summary-unavailable copy for runs withou
   ).toBeInTheDocument();
   expect(
     screen.getByText(
-      'Availability stays explicit in this slice. Raw stdout can be opened here, while stderr, report access, and downloads stay out of scope.',
+      'Check which run artifacts were recorded and open stdout when you need the raw runner output.',
     ),
   ).toBeInTheDocument();
   expect(screen.getAllByText('Not available')).toHaveLength(4);
