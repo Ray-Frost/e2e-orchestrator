@@ -8,7 +8,9 @@ import {
   NotFoundException,
   Param,
   Post,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { RunSchedulerService } from './run-scheduler.service';
 import { RunsService } from './runs.service';
 import { SmokeSuiteService } from './smoke-suite.service';
@@ -107,6 +109,27 @@ export class RunsController {
     }
 
     return runDetail;
+  }
+
+  @Get('runs/:id/stdout')
+  async getRunStdoutById(
+    @Param('id') id: string,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const runId = parsePositiveIntegerPathParam(id, 'id');
+    const runStdout = await this.runsService.getRunStdoutById(runId);
+
+    if (runStdout === null) {
+      throw new NotFoundException({
+        error: {
+          message: `Run ${runId} was not found.`,
+        },
+      });
+    }
+
+    response.setHeader('Content-Type', 'text/plain; charset=utf-8');
+
+    return runStdout;
   }
 
   @Post('runs/:id/cancel')

@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { resolveRunArtifactPaths } from './artifact-persistence/artifact-paths';
@@ -55,6 +56,17 @@ async function pathExists(targetPath: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+function isMissingFileSystemEntryError(
+  error: unknown,
+): error is NodeJS.ErrnoException {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'ENOENT'
+  );
 }
 
 async function getRunArtifactPresence(
@@ -258,6 +270,35 @@ export class RunsService {
       artifacts: artifactPresence,
       result_summary: resultSummary,
     };
+  }
+
+  async getRunStdoutById(runId: number): Promise<string | null> {
+    const runRecord = await this.prismaService.run.findUnique({
+      where: {
+        id: runId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (runRecord === null) {
+      return null;
+    }
+
+    try {
+      return await readFile(resolveRunArtifactPaths(runId).stdoutLog, 'utf8');
+    } catch (error) {
+      if (isMissingFileSystemEntryError(error)) {
+        throw new NotFoundException({
+          error: {
+            message: `stdout.log for run ${runId} was not generated or is no longer present.`,
+          },
+        });
+      }
+
+      throw error;
+    }
   }
 
   async loadRunForExecution(
