@@ -1,12 +1,13 @@
 # server
 
-This package is the backend workspace for the E2E orchestrator. It contains the NestJS server scaffold, Prisma schema, and the database-facing runtime that will incrementally grow into the platform API and execution engine described in `IMPLEMENTATION_GUIDE.md`.
+This package is the backend workspace for the E2E orchestrator. It contains the NestJS server, Prisma schema, and the current runtime and API implementation for suites, runs, cancellation, statistics, and run-artifact persistence.
 
 ## Current State
 
-- The package is still early-stage. `src/main.ts` and `src/app.module.ts` remain close to the Nest starter baseline.
-- The target backend behavior is defined in `../../IMPLEMENTATION_GUIDE.md` and will be implemented incrementally.
-- More detailed backend working constraints live in `./AGENTS.md`.
+- `src/app.module.ts` currently wires the implemented `RunsModule` and `StatisticsModule`.
+- The backend currently serves suite listing, run creation, run listing, run detail, run cancellation, and failure-statistics endpoints.
+- The `runs` area already includes smoke-suite resolution, scheduler orchestration, probe checks, `results.json` ingest, and artifact-path persistence helpers.
+- Package-local working constraints and source-of-truth pointers live in `./AGENTS.md`.
 
 ## Key Paths
 
@@ -72,6 +73,4 @@ the `node` entrypoint path.
 
 ## Related Docs
 
-- Repository map and global rules: [`../../AGENTS.md`](../../AGENTS.md)
 - Backend-local working rules: [`./AGENTS.md`](./AGENTS.md)
-- Runtime behavior and API contract intent: [`../../IMPLEMENTATION_GUIDE.md`](../../IMPLEMENTATION_GUIDE.md)
