@@ -11,8 +11,7 @@ This document defines backend-local working rules for the server package.
 ## Backend Authorities
 
 - `apps/server/prisma/schema.prisma`: source of truth for database models, enums, relations, indexes, and migration-facing data shape.
-- `docs/specs/**`: source of feature-local planning for decomposed server capabilities within their declared scope. Inside one feature directory, `spec.md` owns scope/behavior/acceptance, `plan.md` owns implementation approach and validation, and `tasks.md` is the executable breakdown that must stay aligned with the other two.
-- `IMPLEMENTATION_GUIDE.md`: source of truth for platform boundaries, migration-entry guidance, and undecomposed follow-up capabilities that have not yet moved into `docs/specs/**`.
+- `docs/specs/**`: source of feature-local planning for server capabilities within their declared scope. Inside one feature directory, `spec.md` owns scope/behavior/acceptance, `plan.md` owns implementation approach and validation, and `tasks.md` is the executable breakdown that must stay aligned with the other two.
 - `apps/server/.env`: source of local backend env values for server-side Prisma commands and backend runtime.
 - `apps/server/package.json`: source of runnable backend package scripts.
 
@@ -57,5 +56,5 @@ pnpm --filter server db:migrate:deploy
 - Write `start_time` only after probe success and entry into the runner spawn path.
 - Write `end_time` only after terminal finalization completes, and derive `duration_ms` only when both `start_time` and `end_time` exist.
 - Keep locked terminal reasons: `fail` uses `probe_failed`, `cases_failed`, `runner_exit_nonzero`, or `parse_or_write_error`; `timeout` uses `timeout_exceeded`; `cancelled` uses `user_cancelled`.
-- When a server capability has a registered feature spec under `docs/specs/**`, implement against that scoped spec first and use `IMPLEMENTATION_GUIDE.md` only for undecomposed platform-level guidance or remaining follow-up capability notes.
+- When a server capability has a registered feature spec under `docs/specs/**`, implement against that scoped spec first.
 - Derive statistics from structured DB records. `case_results` is the source for case-level aggregation.
